@@ -1,77 +1,39 @@
 /* ============================================
-   Dark Mode Theme
+   Dark Mode — learningspace01
    ============================================ */
 
 [data-theme="dark"] {
-  --bg-primary: var(--bg-primary-dark);
-  --bg-secondary: var(--bg-secondary-dark);
-  --bg-tertiary: var(--bg-tertiary-dark);
-  --bg-overlay: var(--bg-overlay-dark);
-
-  --text-primary: var(--text-primary-dark);
+  --bg-primary:     var(--bg-primary-dark);
+  --bg-secondary:   var(--bg-secondary-dark);
+  --bg-tertiary:    var(--bg-tertiary-dark);
+  --bg-card:        var(--bg-card-dark);
+  --text-primary:   var(--text-primary-dark);
   --text-secondary: var(--text-secondary-dark);
-  --text-tertiary: var(--text-tertiary-dark);
-  --text-inverse: var(--text-inverse-dark);
-
-  --accent-blue: var(--accent-blue-dark);
-  --accent-green: var(--accent-green-dark);
-  --accent-orange: var(--accent-orange-dark);
-  --accent-red: var(--accent-red-dark);
-  --accent-purple: var(--accent-purple-dark);
-  --accent-teal: var(--accent-teal-dark);
-
-  --separator: var(--separator-dark);
-  --separator-strong: var(--separator-strong-dark);
-  --border: var(--border-dark);
-
-  --shadow-card: var(--shadow-card-dark);
-  --shadow-card-hover: var(--shadow-card-hover-dark);
-
-  --glass-bg: var(--glass-bg-dark);
-  --glass-border: var(--glass-border-dark);
-}
-
-[data-theme="dark"] .card-featured::before {
-  opacity: 0.4;
+  --text-tertiary:  var(--text-tertiary-dark);
+  --border:         var(--border-dark);
+  --border-light:   var(--border-light-dark);
+  --accent:         var(--accent-dark);
+  --accent-light:   var(--accent-light-dark);
 }
 
 [data-theme="dark"] ::selection {
-  background: var(--accent-blue);
-  color: var(--text-inverse-dark);
+  background: var(--accent);
+  color: #fff;
 }
 
-/* Auto theme based on system preference */
+/* Auto dark mode based on system preference */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg-primary: var(--bg-primary-dark);
-    --bg-secondary: var(--bg-secondary-dark);
-    --bg-tertiary: var(--bg-tertiary-dark);
-    --bg-overlay: var(--bg-overlay-dark);
-
-    --text-primary: var(--text-primary-dark);
+    --bg-primary:     var(--bg-primary-dark);
+    --bg-secondary:   var(--bg-secondary-dark);
+    --bg-tertiary:    var(--bg-tertiary-dark);
+    --bg-card:        var(--bg-card-dark);
+    --text-primary:   var(--text-primary-dark);
     --text-secondary: var(--text-secondary-dark);
-    --text-tertiary: var(--text-tertiary-dark);
-    --text-inverse: var(--text-inverse-dark);
-
-    --accent-blue: var(--accent-blue-dark);
-    --accent-green: var(--accent-green-dark);
-    --accent-orange: var(--accent-orange-dark);
-    --accent-red: var(--accent-red-dark);
-    --accent-purple: var(--accent-purple-dark);
-    --accent-teal: var(--accent-teal-dark);
-
-    --separator: var(--separator-dark);
-    --separator-strong: var(--separator-strong-dark);
-    --border: var(--border-dark);
-
-    --shadow-card: var(--shadow-card-dark);
-    --shadow-card-hover: var(--shadow-card-hover-dark);
-
-    --glass-bg: var(--glass-bg-dark);
-    --glass-border: var(--glass-border-dark);
-  }
-
-  :root:not([data-theme="light"]) .card-featured::before {
-    opacity: 0.4;
+    --text-tertiary:  var(--text-tertiary-dark);
+    --border:         var(--border-dark);
+    --border-light:   var(--border-light-dark);
+    --accent:         var(--accent-dark);
+    --accent-light:   var(--accent-light-dark);
   }
 }
