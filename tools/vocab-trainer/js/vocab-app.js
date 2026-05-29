@@ -32,12 +32,17 @@ const toastEl = document.getElementById('toast');
 
 // === Init ===
 async function init() {
-  setupTheme();
-  await vocabStorage.initCategory();
-  await reloadWordData();
-  setupTabs();
-  updateCategoryLabel?.();
-  switchTab('dashboard');
+  try {
+    setupTheme();
+    await vocabStorage.initCategory();
+    await reloadWordData();
+    setupTabs();
+    updateCategoryLabel?.();
+    switchTab('dashboard');
+  } catch (err) {
+    console.error('Init error:', err);
+    contentEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="empty-state-title">加载失败</div><div class="empty-state-desc">${err.message}</div><button class="btn btn-primary mt-6" onclick="location.reload()">重新加载</button></div>`;
+  }
 }
 
 async function reloadWordData() {

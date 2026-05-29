@@ -44,6 +44,7 @@ class VocabStorage {
     this.adapter = new LocalStorageAdapter();
     this.cache = new Map();
     this.currentCategory = 'cet4';
+    this._importedCats = {};
   }
 
   // --- 词库类别管理 ---
@@ -367,4 +368,4 @@ class VocabStorage {
 
 const vocabStorage = new VocabStorage();
 
-export { VocabStorage, vocabStorage, CATEGORIES };
+export { VocabStorage, vocabStorage };
