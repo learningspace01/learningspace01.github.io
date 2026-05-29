@@ -4,7 +4,7 @@
  */
 
 import { themeManager } from '../../assets/js/core/theme.js';
-import { vocabStorage, CATEGORIES } from './storage.js';
+import { vocabStorage } from './storage.js';
 import {
   getDueWords,
   getTodayLearnedCount,
@@ -858,6 +858,14 @@ function renderSettingsPage() {
         <div class="settings-section-header">数据管理</div>
         <div class="settings-row">
           <div>
+            <div class="settings-row-label">导入单词</div>
+            <div class="settings-row-desc">从 Excel 批量导入，自动创建新词库</div>
+          </div>
+          <button class="btn btn-sm btn-secondary" id="open-import">导入</button>
+          <input type="file" id="import-excel-file" accept=".xlsx,.xls,.csv" style="display:none">
+        </div>
+        <div class="settings-row">
+          <div>
             <div class="settings-row-label">导出学习数据</div>
             <div class="settings-row-desc">导出当前词库的 JSON 备份</div>
           </div>
@@ -936,6 +944,17 @@ function renderSettingsPage() {
     await vocabStorage.setSettings(state.settings);
   });
 
+  // Event: Open import
+  document.getElementById('open-import').addEventListener('click', () => {
+    document.getElementById('import-excel-file').click();
+  });
+  document.getElementById('import-excel-file').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    handleExcelImport(file);
+    e.target.value = '';
+  });
+
   // Event: Export data
   document.getElementById('export-data').addEventListener('click', async () => {
     const data = await vocabStorage.exportData();
@@ -1012,6 +1031,182 @@ async function loadCategoryCounts() {
       countEl.textContent = '—';
     }
   }
+}
+
+// ============================================
+// Excel Import
+// ============================================
+
+let importPreviewData = [];
+
+async function handleExcelImport(file) {
+  try {
+    const data = await readExcelFile(file);
+    if (!data || data.length === 0) {
+      showToast('文件中没有找到单词数据');
+      return;
+    }
+    importPreviewData = data;
+    showImportModal(data);
+  } catch (err) {
+    console.error('Import error:', err);
+    showToast('导入失败，请检查文件格式');
+  }
+}
+
+function readExcelFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const wb = XLSX.read(e.target.result, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+        if (rows.length < 2) { resolve([]); return; }
+
+        // Detect header row (first row) — normalize column names
+        const headers = rows[0].map(h => String(h || '').toLowerCase().trim());
+
+        const colMap = {};
+        const mappings = {
+          word: ['word', '单词', '英文', 'english', '词汇'],
+          phonetic: ['phonetic', '音标', 'phonetics', 'pronunciation'],
+          meaning: ['meaning', '释义', '中文', 'chinese', '意思', '含义', '定义'],
+          pos: ['pos', '词性', 'part of speech', 'type'],
+          examples: ['examples', '例句', 'example', 'sentences', '例句(en)', '例句（en）'],
+        };
+
+        for (const [key, names] of Object.entries(mappings)) {
+          for (const name of names) {
+            const idx = headers.indexOf(name);
+            if (idx >= 0) { colMap[key] = idx; break; }
+          }
+        }
+
+        if (colMap.word === undefined) {
+          // Fallback: first column is word
+          colMap.word = 0;
+          if (headers.length > 1) colMap.meaning = 1;
+        }
+
+        const words = [];
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || !row[colMap.word]) continue;
+          const word = String(row[colMap.word]).trim();
+          if (!word) continue;
+
+          const meaning = colMap.meaning >= 0 ? String(row[colMap.meaning] || '').trim() : '';
+          const phonetic = colMap.phonetic >= 0 ? String(row[colMap.phonetic] || '').trim() : '';
+          const pos = colMap.pos >= 0 ? String(row[colMap.pos] || '').trim() : '';
+
+          // Parse examples: split by | or newline
+          let examples = [];
+          if (colMap.examples >= 0) {
+            const raw = String(row[colMap.examples] || '').trim();
+            if (raw) {
+              examples = raw.split('|').map(s => {
+                const parts = s.trim().split('\n');
+                return { en: parts[0]?.trim() || '', cn: parts[1]?.trim() || '' };
+              }).filter(e => e.en);
+            }
+          }
+
+          // If no pos in data, infer from meaning
+          let finalPos = pos;
+          if (!finalPos && meaning) {
+            if (meaning.startsWith('v') || meaning.startsWith('V')) finalPos = 'v.';
+            else if (meaning.startsWith('n') || meaning.startsWith('N')) finalPos = 'n.';
+            else if (meaning.startsWith('adj') || meaning.startsWith('Adj')) finalPos = 'adj.';
+            else if (meaning.startsWith('adv') || meaning.startsWith('Adv')) finalPos = 'adv.';
+          }
+
+          words.push({
+            id: `imp_${Date.now()}_${i}`,
+            word,
+            phonetic,
+            meaning,
+            definitions: [{ pos: finalPos, def: meaning, example: examples[0]?.en || '' }],
+            examples,
+            tags: ['导入'],
+            difficulty: 2,
+          });
+        }
+
+        resolve(words);
+      } catch (err) { reject(err); }
+    };
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function showImportModal(data) {
+  const preview = data.slice(0, 10);
+
+  const modal = document.createElement('div');
+  modal.className = 'import-modal-overlay';
+  modal.id = 'import-modal';
+  modal.innerHTML = `
+    <div class="import-modal">
+      <h2>导入单词</h2>
+      <p style="color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: var(--space-4);">
+        解析到 <strong>${data.length}</strong> 个单词
+      </p>
+      ${preview.length > 0 ? `
+        <div class="import-preview">
+          <table>
+            <thead><tr>
+              <th>#</th><th>单词</th><th>音标</th><th>释义</th><th>词性</th>
+            </tr></thead>
+            <tbody>
+              ${preview.map((w, i) => `
+                <tr>
+                  <td>${i + 1}</td>
+                  <td><strong>${w.word}</strong></td>
+                  <td>${w.phonetic || '—'}</td>
+                  <td>${(w.meaning || '').slice(0, 20)}</td>
+                  <td>${w.definitions?.[0]?.pos || '—'}</td>
+                </tr>
+              `).join('')}
+              ${data.length > 10 ? `<tr><td colspan="5" style="text-align:center;color:var(--text-tertiary)">... 还有 ${data.length - 10} 个单词</td></tr>` : ''}
+            </tbody>
+          </table>
+        </div>
+      ` : ''}
+      <div class="import-field">
+        <label>词库名称</label>
+        <input type="text" id="import-cat-name" placeholder="例如：我的生词本" value="导入词库 ${new Date().toLocaleDateString('zh-CN')}">
+      </div>
+      <div class="import-actions">
+        <button class="btn btn-secondary" id="import-cancel">取消</button>
+        <button class="btn btn-primary" id="import-confirm">确认导入 ${data.length} 个单词</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  // Events
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeImportModal();
+  });
+
+  document.getElementById('import-cancel').addEventListener('click', closeImportModal);
+  document.getElementById('import-confirm').addEventListener('click', async () => {
+    const name = document.getElementById('import-cat-name').value.trim() || '导入词库';
+    await vocabStorage.addImportedCategory(name, importPreviewData);
+    closeImportModal();
+    await reloadWordData();
+    updateCategoryLabel();
+    renderSettingsPage();
+    showToast(`已导入 ${importPreviewData.length} 个单词`);
+  });
+}
+
+function closeImportModal() {
+  const modal = document.getElementById('import-modal');
+  if (modal) modal.remove();
 }
 
 // ============================================

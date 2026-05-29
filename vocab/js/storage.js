@@ -3,14 +3,15 @@
  * 每个词库的学习记录和统计独立，设置共享
  */
 
-const CATEGORIES = {
-  'cet4':            { key: 'cet4',             label: 'CET-4 核心词汇',             file: '../assets/data/vocab-cet4.json' },
-  'oxford-primary':  { key: 'oxford-primary',   label: '上海牛津 · 小学',             file: '../assets/data/vocab-oxford-primary.json' },
-  'oxford-junior':   { key: 'oxford-junior',    label: '上海牛津 · 初中',             file: '../assets/data/vocab-oxford-junior.json' },
-  'oxford-senior':   { key: 'oxford-senior',    label: '上海牛津 · 高中',             file: '../assets/data/vocab-oxford-senior.json' },
-  'ket':             { key: 'ket',               label: 'KET 核心词汇',                file: '../assets/data/vocab-ket.json' },
+const BUILTIN_CATEGORIES = {
+  'cet4':            { key: 'cet4',             label: 'CET-4 核心词汇',             file: '../assets/data/vocab-cet4.json', builtin: true },
+  'oxford-primary':  { key: 'oxford-primary',   label: '上海牛津 · 小学',             file: '../assets/data/vocab-oxford-primary.json', builtin: true },
+  'oxford-junior':   { key: 'oxford-junior',    label: '上海牛津 · 初中',             file: '../assets/data/vocab-oxford-junior.json', builtin: true },
+  'oxford-senior':   { key: 'oxford-senior',    label: '上海牛津 · 高中',             file: '../assets/data/vocab-oxford-senior.json', builtin: true },
+  'ket':             { key: 'ket',               label: 'KET 核心词汇',                file: '../assets/data/vocab-ket.json', builtin: true },
 };
 
+const IMPORTED_CATS_KEY = 'ls01_vocab_imported_cats';
 const SETTINGS_KEY = 'ls01_vocab_settings';
 
 class LocalStorageAdapter {
@@ -47,8 +48,12 @@ class VocabStorage {
 
   // --- 词库类别管理 ---
 
+  _allCategories() {
+    return { ...BUILTIN_CATEGORIES, ...this._importedCats };
+  }
+
   getCategories() {
-    return Object.values(CATEGORIES);
+    return Object.values(this._allCategories());
   }
 
   getCurrentCategory() {
@@ -56,24 +61,66 @@ class VocabStorage {
   }
 
   getCategoryLabel(key) {
-    return CATEGORIES[key]?.label || key;
+    const all = this._allCategories();
+    return all[key]?.label || key;
+  }
+
+  async _loadImportedCats() {
+    const data = await this.adapter.get(IMPORTED_CATS_KEY);
+    this._importedCats = data || {};
   }
 
   async switchCategory(categoryKey) {
-    if (!CATEGORIES[categoryKey]) return false;
+    const all = this._allCategories();
+    if (!all[categoryKey]) return false;
     this.currentCategory = categoryKey;
     this.cache.clear();
-    // 保存当前选择的词库
     await this.adapter.set('ls01_vocab_current_category', categoryKey);
     return true;
   }
 
   async initCategory() {
+    await this._loadImportedCats();
     const saved = await this.adapter.get('ls01_vocab_current_category');
-    if (saved && CATEGORIES[saved]) {
+    const all = this._allCategories();
+    if (saved && all[saved]) {
       this.currentCategory = saved;
     }
     return this.currentCategory;
+  }
+
+  async addImportedCategory(name, words) {
+    await this._loadImportedCats();
+    const key = 'import_' + Date.now();
+    const cat = { key, label: name, builtin: false };
+    this._importedCats[key] = cat;
+    await this.adapter.set(IMPORTED_CATS_KEY, this._importedCats);
+
+    // Save words under this category
+    const wordsKey = keyFor(key, 'words');
+    await this.adapter.set(wordsKey, words);
+
+    // Auto-switch to new category
+    await this.switchCategory(key);
+    return key;
+  }
+
+  async removeImportedCategory(categoryKey) {
+    await this._loadImportedCats();
+    if (!this._importedCats[categoryKey]) return false;
+    delete this._importedCats[categoryKey];
+    await this.adapter.set(IMPORTED_CATS_KEY, this._importedCats);
+    // Clean up data
+    await Promise.all([
+      this.adapter.remove(keyFor(categoryKey, 'words')),
+      this.adapter.remove(keyFor(categoryKey, 'records')),
+      this.adapter.remove(keyFor(categoryKey, 'stats')),
+    ]);
+    this.cache.clear();
+    if (this.currentCategory === categoryKey) {
+      this.currentCategory = 'cet4';
+    }
+    return true;
   }
 
   // --- 单词库管理 ---
@@ -250,8 +297,15 @@ class VocabStorage {
   // --- 工具方法 ---
 
   async loadDefaultWords() {
-    const cat = CATEGORIES[this.currentCategory];
-    const file = cat?.file || CATEGORIES['cet4'].file;
+    const all = this._allCategories();
+    const cat = all[this.currentCategory];
+    // Imported categories have no file — return empty (user data already stored)
+    if (cat && !cat.file) {
+      const words = await this.adapter.get(this._wordsKey()) || [];
+      if (words.length > 0) return words;
+      return this._createFallbackWords();
+    }
+    const file = cat?.file || BUILTIN_CATEGORIES['cet4'].file;
     try {
       const response = await fetch(file);
       if (!response.ok) throw new Error('Failed to load');
@@ -294,7 +348,8 @@ class VocabStorage {
   }
 
   async clearAllData() {
-    for (const cat of Object.keys(CATEGORIES)) {
+    const allCats = { ...BUILTIN_CATEGORIES, ...this._importedCats };
+    for (const cat of Object.keys(allCats)) {
       await Promise.all([
         this.adapter.remove(keyFor(cat, 'words')),
         this.adapter.remove(keyFor(cat, 'records')),
@@ -302,7 +357,9 @@ class VocabStorage {
       ]);
     }
     await this.adapter.remove(SETTINGS_KEY);
+    await this.adapter.remove(IMPORTED_CATS_KEY);
     await this.adapter.remove('ls01_vocab_current_category');
+    this._importedCats = {};
     this.cache.clear();
     this.currentCategory = 'cet4';
   }
