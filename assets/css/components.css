@@ -451,6 +451,13 @@
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* Hide tab bar on desktop when sidebar is visible */
+@media (min-width: 768px) {
+  .tab-bar {
+    display: none;
+  }
+}
+
 .tab-item {
   display: flex;
   flex-direction: column;

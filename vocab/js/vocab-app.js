@@ -39,6 +39,7 @@ const state = {
 
 const contentEl = document.getElementById('vocab-content');
 const tabBarEl = document.getElementById('tab-bar');
+const sidebarEl = document.getElementById('sidebar');
 const toastEl = document.getElementById('toast');
 
 // ============================================
@@ -97,12 +98,21 @@ function setupTheme() {
 }
 
 function setupTabs() {
+  // Bottom tab bar (mobile)
   tabBarEl.querySelectorAll('.tab-item').forEach(tab => {
     tab.addEventListener('click', () => {
-      const tabName = tab.dataset.tab;
-      switchTab(tabName);
+      switchTab(tab.dataset.tab);
     });
   });
+
+  // Sidebar navigation (desktop)
+  if (sidebarEl) {
+    sidebarEl.querySelectorAll('.sidebar-item').forEach(item => {
+      item.addEventListener('click', () => {
+        switchTab(item.dataset.tab);
+      });
+    });
+  }
 }
 
 function switchTab(tabName) {
@@ -112,6 +122,13 @@ function switchTab(tabName) {
   tabBarEl.querySelectorAll('.tab-item').forEach(t => {
     t.classList.toggle('active', t.dataset.tab === tabName);
   });
+
+  // Update sidebar
+  if (sidebarEl) {
+    sidebarEl.querySelectorAll('.sidebar-item').forEach(item => {
+      item.classList.toggle('active', item.dataset.tab === tabName);
+    });
+  }
 
   // Render content
   contentEl.innerHTML = '';
