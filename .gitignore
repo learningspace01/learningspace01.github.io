@@ -1,3 +1,10 @@
+# Jekyll build
+_site/
+.jekyll-cache/
+.jekyll-metadata
+.sass-cache/
+Gemfile.lock
+
 # Claude local settings
 .claude/settings.local.json
 

@@ -1,149 +1,84 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#F5F5F7" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
-  <meta name="description" content="Learning Space 01 — 个人学习工具集合，包含英语生词训练、学习资料等">
-  <title>Learning Space 01</title>
+---
+layout: default
+title: Learning Space 01
+description: 你的个人学习工具箱 — 精心设计的工具，帮助你更高效地学习
+---
 
-  <link rel="stylesheet" href="assets/css/design-system.css">
-  <link rel="stylesheet" href="assets/css/components.css">
-  <link rel="stylesheet" href="assets/css/theme.css">
-  <link rel="stylesheet" href="assets/css/home.css">
-
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
-</head>
-<body>
-  <!-- Navigation -->
-  <nav class="navbar">
-    <div class="container flex items-center justify-between" style="width:100%">
-      <div class="navbar-title">Learning Space 01</div>
-      <button class="btn btn-icon" id="theme-toggle" aria-label="切换主题">
-        <svg id="theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="4"></circle>
-          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
-        </svg>
-        <svg id="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-        </svg>
-      </button>
+<!-- Main Content -->
+<main class="home-main">
+  <!-- Hero Section -->
+  <section class="home-hero">
+    <div class="container">
+      <h1 class="home-hero-title">Learning Space 01</h1>
+      <p class="home-hero-subtitle">你的个人学习工具箱</p>
+      <p class="home-hero-desc">精心设计的工具，帮助你更高效地学习<br>简洁优雅，像 Apple 原生应用一样好用</p>
     </div>
-  </nav>
+  </section>
 
-  <!-- Main Content -->
-  <main class="home-main">
-    <!-- Hero Section -->
-    <section class="home-hero">
-      <div class="container">
-        <h1 class="home-hero-title">Learning Space 01</h1>
-        <p class="home-hero-subtitle">你的个人学习工具箱</p>
-        <p class="home-hero-desc">精心设计的工具，帮助你更高效地学习<br>简洁优雅，像 Apple 原生应用一样好用</p>
-      </div>
-    </section>
+  <!-- Tools Grid -->
+  <section class="home-tools">
+    <div class="container">
+      <!-- Featured Tool: Vocabulary -->
+      <a href="vocab/index.html" class="tool-card tool-card-featured">
+        <div class="tool-card-bg"></div>
+        <div class="tool-card-content">
+          <div class="tool-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+            </svg>
+          </div>
+          <div class="tool-card-info">
+            <h2 class="tool-card-title">生词训练本</h2>
+            <p class="tool-card-desc">智能记忆 · 间隔复习 · 语音发音</p>
+            <div class="tool-card-tags">
+              <span class="badge badge-blue">艾宾浩斯记忆曲线</span>
+              <span class="badge badge-green">TTS 语音</span>
+            </div>
+          </div>
+          <div class="tool-card-arrow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14M12 5l7 7-7 7"></path>
+            </svg>
+          </div>
+        </div>
+      </a>
 
-    <!-- Tools Grid -->
-    <section class="home-tools">
-      <div class="container">
-        <!-- Featured Tool: Vocabulary -->
-        <a href="vocab/index.html" class="tool-card tool-card-featured">
-          <div class="tool-card-bg"></div>
+      <!-- Coming Soon Tools -->
+      <div class="tools-grid">
+        <div class="tool-card tool-card-coming">
           <div class="tool-card-content">
-            <div class="tool-card-icon">
+            <div class="tool-card-icon tool-icon-gray">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
-                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
               </svg>
             </div>
             <div class="tool-card-info">
-              <h2 class="tool-card-title">生词训练本</h2>
-              <p class="tool-card-desc">智能记忆 · 间隔复习 · 语音发音</p>
-              <div class="tool-card-tags">
-                <span class="badge badge-blue">艾宾浩斯记忆曲线</span>
-                <span class="badge badge-green">TTS 语音</span>
-              </div>
+              <h3 class="tool-card-title">学习资料库</h3>
+              <p class="tool-card-desc">各类学习资料整理与分类</p>
+              <span class="badge badge-orange">即将上线</span>
             </div>
-            <div class="tool-card-arrow">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M5 12h14M12 5l7 7-7 7"></path>
+          </div>
+        </div>
+
+        <div class="tool-card tool-card-coming">
+          <div class="tool-card-content">
+            <div class="tool-card-icon tool-icon-gray">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
+                <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
               </svg>
             </div>
-          </div>
-        </a>
-
-        <!-- Coming Soon Tools -->
-        <div class="tools-grid">
-          <div class="tool-card tool-card-coming">
-            <div class="tool-card-content">
-              <div class="tool-card-icon tool-icon-gray">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                  <line x1="8" y1="21" x2="16" y2="21"></line>
-                  <line x1="12" y1="17" x2="12" y2="21"></line>
-                </svg>
-              </div>
-              <div class="tool-card-info">
-                <h3 class="tool-card-title">学习资料库</h3>
-                <p class="tool-card-desc">各类学习资料整理与分类</p>
-                <span class="badge badge-orange">即将上线</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="tool-card tool-card-coming">
-            <div class="tool-card-content">
-              <div class="tool-card-icon tool-icon-gray">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
-                  <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
-                </svg>
-              </div>
-              <div class="tool-card-info">
-                <h3 class="tool-card-title">学习统计</h3>
-                <p class="tool-card-desc">可视化学习进度追踪</p>
-                <span class="badge badge-orange">即将上线</span>
-              </div>
+            <div class="tool-card-info">
+              <h3 class="tool-card-title">学习统计</h3>
+              <p class="tool-card-desc">可视化学习进度追踪</p>
+              <span class="badge badge-orange">即将上线</span>
             </div>
           </div>
         </div>
       </div>
-    </section>
-
-    <!-- Footer -->
-    <footer class="home-footer">
-      <div class="container">
-        <p> Learning Space 01 · Built with care</p>
-      </div>
-    </footer>
-  </main>
-
-  <script type="module">
-    import { themeManager } from './assets/js/core/theme.js';
-
-    // Theme toggle
-    const toggleBtn = document.getElementById('theme-toggle');
-    const lightIcon = document.getElementById('theme-icon-light');
-    const darkIcon = document.getElementById('theme-icon-dark');
-
-    function updateThemeIcon() {
-      const isDark = themeManager.getEffectiveTheme() === 'dark';
-      lightIcon.style.display = isDark ? 'none' : 'block';
-      darkIcon.style.display = isDark ? 'block' : 'none';
-    }
-
-    updateThemeIcon();
-
-    toggleBtn.addEventListener('click', () => {
-      themeManager.toggle();
-      updateThemeIcon();
-    });
-
-    window.addEventListener('themechange', updateThemeIcon);
-  </script>
-</body>
-</html>
+    </div>
+  </section>
+</main>
