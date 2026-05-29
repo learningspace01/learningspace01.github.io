@@ -18,7 +18,7 @@ import { isSpeechAvailable } from './speech.js';
 // ============================================
 
 const state = {
-  currentTab: 'learn',
+  currentTab: 'dashboard',
   words: [],
   records: [],
   stats: null,
