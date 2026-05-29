@@ -4,7 +4,7 @@
  */
 
 import { themeManager } from '../../assets/js/core/theme.js';
-import { vocabStorage } from './storage.js';
+import { vocabStorage, CATEGORIES } from './storage.js';
 import {
   getDueWords,
   getTodayLearnedCount,
@@ -47,10 +47,25 @@ const toastEl = document.getElementById('toast');
 // ============================================
 
 async function init() {
-  // Theme
   setupTheme();
 
+  // Initialize category
+  await vocabStorage.initCategory();
+
   // Load data
+  await reloadWordData();
+
+  // Setup tabs
+  setupTabs();
+
+  // Update category label in sidebar
+  updateCategoryLabel();
+
+  // Render initial tab
+  switchTab('learn');
+}
+
+async function reloadWordData() {
   try {
     const [words, records, stats, settings] = await Promise.all([
       vocabStorage.getWords(),
@@ -65,17 +80,18 @@ async function init() {
     state.settings = settings;
     state.isInitialized = true;
 
-    console.log(`Loaded ${words.length} words, ${records.length} records`);
+    console.log(`Loaded ${words.length} words (${vocabStorage.getCurrentCategory()})`);
   } catch (err) {
     console.error('Failed to load data:', err);
     showToast('数据加载失败，请刷新页面');
   }
+}
 
-  // Setup tabs
-  setupTabs();
-
-  // Render initial tab
-  switchTab('learn');
+function updateCategoryLabel() {
+  const label = document.getElementById('sidebar-category-label');
+  if (label) {
+    label.textContent = vocabStorage.getCategoryLabel(vocabStorage.getCurrentCategory());
+  }
 }
 
 function setupTheme() {
@@ -147,6 +163,9 @@ function switchTab(tabName) {
       break;
     case 'wordbook':
       renderWordbookPage();
+      break;
+    case 'settings':
+      renderSettingsPage();
       break;
   }
 }
@@ -780,6 +799,219 @@ function renderWordbookList(query = '') {
       </div>
     `;
   }).join('');
+}
+
+// ============================================
+// Settings Page
+// ============================================
+
+function renderSettingsPage() {
+  const categories = vocabStorage.getCategories();
+  const currentCat = vocabStorage.getCurrentCategory();
+
+  contentEl.innerHTML = `
+    <div class="settings-page">
+      <!-- Category Selection -->
+      <div class="settings-section">
+        <div class="settings-section-header">词库选择</div>
+        <div class="cat-radio-group" id="cat-radio-group">
+          ${categories.map(cat => `
+            <button class="cat-radio-item ${cat.key === currentCat ? 'active' : ''}" data-cat="${cat.key}">
+              <span class="cat-radio-check"></span>
+              <span>${cat.label}</span>
+              <span class="cat-radio-count" id="cat-count-${cat.key}">...</span>
+            </button>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Learning Settings -->
+      <div class="settings-section">
+        <div class="settings-section-header">学习设置</div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">每日新词目标</div>
+          </div>
+          <div class="stepper">
+            <button class="stepper-btn" id="goal-minus">−</button>
+            <span class="stepper-value" id="goal-value">${state.settings.dailyGoal || 20}</span>
+            <button class="stepper-btn" id="goal-plus">+</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">自动发音</div>
+            <div class="settings-row-desc">显示新卡片时自动朗读</div>
+          </div>
+          <input type="checkbox" class="toggle" id="auto-audio" ${state.settings.autoPlayAudio ? 'checked' : ''}>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">显示音标</div>
+          </div>
+          <input type="checkbox" class="toggle" id="show-phonetic" ${state.settings.showPhonetic ? 'checked' : ''}>
+        </div>
+      </div>
+
+      <!-- Data Management -->
+      <div class="settings-section">
+        <div class="settings-section-header">数据管理</div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">导出学习数据</div>
+            <div class="settings-row-desc">导出当前词库的 JSON 备份</div>
+          </div>
+          <button class="btn btn-sm btn-secondary" id="export-data">导出</button>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">导入学习数据</div>
+            <div class="settings-row-desc">从 JSON 文件恢复数据</div>
+          </div>
+          <button class="btn btn-sm btn-secondary" id="import-data">导入</button>
+          <input type="file" id="import-file" accept=".json" style="display:none">
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">清除当前词库记录</div>
+            <div class="settings-row-desc">保留单词，仅清除学习进度</div>
+          </div>
+          <button class="btn-danger-text" id="clear-category">清除</button>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label" style="color: var(--accent-red);">重置所有数据</div>
+            <div class="settings-row-desc">删除所有词库的学习记录</div>
+          </div>
+          <button class="btn-danger-text" id="reset-all">重置</button>
+        </div>
+      </div>
+
+      <!-- About -->
+      <div class="settings-section">
+        <div class="settings-about">
+          基于<b>艾宾浩斯遗忘曲线</b>的间隔重复算法，在遗忘临界点安排复习。<br>
+          8 个复习阶段：1天 → 2天 → 4天 → 7天 → 15天 → 30天 → 60天 → 90天。<br>
+          将短期记忆转化为长期记忆。
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Load word counts for each category
+  loadCategoryCounts();
+
+  // Event: Category selection
+  document.getElementById('cat-radio-group').querySelectorAll('.cat-radio-item').forEach(item => {
+    item.addEventListener('click', async () => {
+      const catKey = item.dataset.cat;
+      if (catKey === vocabStorage.getCurrentCategory()) return;
+      await handleCategoryChange(catKey);
+    });
+  });
+
+  // Event: Daily goal stepper
+  document.getElementById('goal-minus').addEventListener('click', async () => {
+    const newGoal = Math.max(5, (state.settings.dailyGoal || 20) - 5);
+    state.settings.dailyGoal = newGoal;
+    document.getElementById('goal-value').textContent = newGoal;
+    await vocabStorage.setSettings(state.settings);
+  });
+  document.getElementById('goal-plus').addEventListener('click', async () => {
+    const newGoal = Math.min(50, (state.settings.dailyGoal || 20) + 5);
+    state.settings.dailyGoal = newGoal;
+    document.getElementById('goal-value').textContent = newGoal;
+    await vocabStorage.setSettings(state.settings);
+  });
+
+  // Event: Auto audio toggle
+  document.getElementById('auto-audio').addEventListener('change', async (e) => {
+    state.settings.autoPlayAudio = e.target.checked;
+    await vocabStorage.setSettings(state.settings);
+  });
+
+  // Event: Show phonetic toggle
+  document.getElementById('show-phonetic').addEventListener('change', async (e) => {
+    state.settings.showPhonetic = e.target.checked;
+    await vocabStorage.setSettings(state.settings);
+  });
+
+  // Event: Export data
+  document.getElementById('export-data').addEventListener('click', async () => {
+    const data = await vocabStorage.exportData();
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `vocab-${vocabStorage.getCurrentCategory()}-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('导出成功');
+  });
+
+  // Event: Import data
+  document.getElementById('import-data').addEventListener('click', () => {
+    document.getElementById('import-file').click();
+  });
+  document.getElementById('import-file').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const success = await vocabStorage.importData(ev.target.result);
+      if (success) {
+        await reloadWordData();
+        showToast('导入成功');
+      } else {
+        showToast('导入失败，请检查文件格式');
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  // Event: Clear current category
+  document.getElementById('clear-category').addEventListener('click', async () => {
+    if (confirm('确定要清除当前词库的学习记录吗？单词数据保留。')) {
+      await vocabStorage.clearCurrentCategoryData();
+      await reloadWordData();
+      showToast('已清除');
+    }
+  });
+
+  // Event: Reset all
+  document.getElementById('reset-all').addEventListener('click', async () => {
+    if (confirm('确定要删除所有词库的全部数据吗？此操作不可撤销。')) {
+      await vocabStorage.clearAllData();
+      await reloadWordData();
+      updateCategoryLabel();
+      showToast('已重置所有数据');
+    }
+  });
+}
+
+async function handleCategoryChange(categoryKey) {
+  await vocabStorage.switchCategory(categoryKey);
+  await reloadWordData();
+  updateCategoryLabel();
+  // Re-render settings to reflect new active category
+  renderSettingsPage();
+}
+
+async function loadCategoryCounts() {
+  const categories = vocabStorage.getCategories();
+  for (const cat of categories) {
+    const countEl = document.getElementById(`cat-count-${cat.key}`);
+    if (!countEl) continue;
+    try {
+      const response = await fetch(cat.file);
+      if (response.ok) {
+        const words = await response.json();
+        countEl.textContent = `${words.length} 词`;
+      }
+    } catch {
+      countEl.textContent = '—';
+    }
+  }
 }
 
 // ============================================
