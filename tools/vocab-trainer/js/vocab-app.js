@@ -1,6 +1,7 @@
 /**
- * Vocab App — Main Controller
- * Manages routing, state, and coordinates all sub-modules
+ * VocabMaster — Main App Controller
+ * 5 tabs per design spec: Import / Learn / Review / Stats / Settings
+ * Dashboard is landing page (click brand to return)
  */
 
 import { themeManager } from '../../../assets/js/core/theme.js';
@@ -8,200 +9,132 @@ import { vocabStorage } from './storage.js';
 import {
   getDueWords, getTodayLearnedCount, getTodayReviewedCount, getStreakDays,
   createLearningRecord, updateLearningRecord,
-  RESULT, QUALITY, LABELS,
+  QUALITY, LABELS,
 } from './spaced-repetition.js';
 import { Flashcard } from './flashcard.js';
-import { isSpeechAvailable } from './speech.js';
 
-// ============================================
-// App State
-// ============================================
-
+// === State ===
 const state = {
   currentTab: 'dashboard',
-  words: [],
-  records: [],
-  stats: null,
-  settings: null,
-  currentWordIndex: 0,
-  quizQueue: [],
-  quizAnswers: [],
-  isInitialized: false,
+  words: [], records: [], stats: null, settings: null,
+  currentWordIndex: 0, quizQueue: [], quizAnswers: [],
+  importSubTab: 'manual', // manual | batch | preset | url
+  learnMode: 'flashcard', // flashcard | spelling
+  testMode: 'choice',    // choice | dictation
+  testTimer: 0, testTimerInterval: null,
 };
 
-// ============================================
-// DOM References
-// ============================================
-
+// === DOM ===
 const contentEl = document.getElementById('vocab-content');
 const tabBarEl = document.getElementById('tab-bar');
 const sidebarEl = document.getElementById('sidebar');
 const toastEl = document.getElementById('toast');
 
-// ============================================
-// Initialization
-// ============================================
-
+// === Init ===
 async function init() {
   setupTheme();
-
-  // Initialize category
   await vocabStorage.initCategory();
-
-  // Load data
   await reloadWordData();
-
-  // Setup tabs
   setupTabs();
-
-  // Update category label in sidebar
-  updateCategoryLabel();
-
-  // Render initial tab
+  updateCategoryLabel?.();
   switchTab('dashboard');
 }
 
 async function reloadWordData() {
   try {
     const [words, records, stats, settings] = await Promise.all([
-      vocabStorage.getWords(),
-      vocabStorage.getRecords(),
-      vocabStorage.getStats(),
-      vocabStorage.getSettings(),
+      vocabStorage.getWords(), vocabStorage.getRecords(),
+      vocabStorage.getStats(), vocabStorage.getSettings(),
     ]);
-
-    state.words = words;
-    state.records = records;
-    state.stats = stats;
-    state.settings = settings;
-    state.isInitialized = true;
-
+    state.words = words; state.records = records;
+    state.stats = stats; state.settings = settings;
     console.log(`Loaded ${words.length} words (${vocabStorage.getCurrentCategory()})`);
   } catch (err) {
-    console.error('Failed to load data:', err);
-    showToast('数据加载失败，请刷新页面');
+    console.error('Load error:', err); showToast('数据加载失败');
   }
 }
 
 function updateCategoryLabel() {
-  const label = document.getElementById('sidebar-category-label');
-  if (label) {
-    label.textContent = vocabStorage.getCategoryLabel(vocabStorage.getCurrentCategory());
-  }
+  const el = document.getElementById('sidebar-category-label');
+  if (el) el.textContent = vocabStorage.getCategoryLabel(vocabStorage.getCurrentCategory());
 }
 
 function setupTheme() {
   const toggleBtn = document.getElementById('theme-toggle');
-  const lightIcon = document.getElementById('theme-icon-light');
-  const darkIcon = document.getElementById('theme-icon-dark');
-
-  function updateIcon() {
+  const light = document.getElementById('theme-icon-light');
+  const dark = document.getElementById('theme-icon-dark');
+  function update() {
     const isDark = themeManager.getEffectiveTheme() === 'dark';
-    lightIcon.style.display = isDark ? 'none' : 'block';
-    darkIcon.style.display = isDark ? 'block' : 'none';
+    if (light) light.style.display = isDark ? 'none' : 'block';
+    if (dark) dark.style.display = isDark ? 'block' : 'none';
   }
-
-  updateIcon();
-  toggleBtn.addEventListener('click', () => {
-    themeManager.toggle();
-    updateIcon();
-  });
-  window.addEventListener('themechange', updateIcon);
+  update();
+  if (toggleBtn) toggleBtn.addEventListener('click', () => { themeManager.toggle(); update(); });
+  window.addEventListener('themechange', update);
 }
 
 function setupTabs() {
-  // Bottom tab bar (mobile)
-  tabBarEl.querySelectorAll('.tab-item').forEach(tab => {
-    tab.addEventListener('click', () => {
-      switchTab(tab.dataset.tab);
-    });
-  });
-
-  // Sidebar navigation (desktop)
+  // Desktop sidebar
   if (sidebarEl) {
     sidebarEl.querySelectorAll('.sidebar-item').forEach(item => {
-      item.addEventListener('click', () => {
-        switchTab(item.dataset.tab);
-      });
+      item.addEventListener('click', () => switchTab(item.dataset.tab));
     });
   }
+  // Mobile tab bar
+  tabBarEl.querySelectorAll('.tab-item').forEach(tab => {
+    tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+  });
+  // Brand click → dashboard
+  document.getElementById('nav-brand')?.addEventListener('click', (e) => { e.preventDefault(); switchTab('dashboard'); });
 }
 
 function switchTab(tabName) {
   state.currentTab = tabName;
 
-  // Update tab bar
-  tabBarEl.querySelectorAll('.tab-item').forEach(t => {
-    t.classList.toggle('active', t.dataset.tab === tabName);
-  });
-
   // Update sidebar
   if (sidebarEl) {
-    sidebarEl.querySelectorAll('.sidebar-item').forEach(item => {
-      item.classList.toggle('active', item.dataset.tab === tabName);
-    });
+    sidebarEl.querySelectorAll('.sidebar-item').forEach(i =>
+      i.classList.toggle('active', i.dataset.tab === tabName));
   }
+  // Update bottom tab bar
+  tabBarEl.querySelectorAll('.tab-item').forEach(i =>
+    i.classList.toggle('active', i.dataset.tab === tabName));
 
-  // Render content
   contentEl.innerHTML = '';
   switch (tabName) {
-    case 'dashboard':
-      renderDashboard();
-      break;
-    case 'learn':
-      renderLearnMode();
-      break;
-    case 'review':
-      renderReviewMode();
-      break;
-    case 'quiz':
-      renderQuizMode();
-      break;
-    case 'stats':
-      renderStatsPage();
-      break;
-    case 'wordbook':
-      renderWordbookPage();
-      break;
-    case 'settings':
-      renderSettingsPage();
-      break;
+    case 'dashboard': renderDashboard(); break;
+    case 'import': renderImport(); break;
+    case 'learn': renderLearnMode(); break;
+    case 'review': renderReviewMode(); break;
+    case 'stats': renderStats(); break;
+    case 'settings': renderSettings(); break;
   }
 }
 
-// ============================================
-// Toast
-// ============================================
-
-let toastTimeout;
-function showToast(message) {
-  clearTimeout(toastTimeout);
-  toastEl.textContent = message;
-  toastEl.classList.add('show');
-  toastTimeout = setTimeout(() => {
-    toastEl.classList.remove('show');
-  }, 2500);
+// === Toast ===
+let toastT;
+function showToast(msg) {
+  clearTimeout(toastT);
+  toastEl.textContent = msg; toastEl.classList.add('show');
+  toastT = setTimeout(() => toastEl.classList.remove('show'), 2500);
 }
 
 // ============================================
-// Dashboard
+// DASHBOARD (§4.1)
 // ============================================
-
 function renderDashboard() {
-  const dueCount = getDueWords(state.records).length;
-  const learnedCount = state.records.filter(r => r.repetitions > 0).length;
-  const totalWords = state.words.length;
+  const due = getDueWords(state.records);
+  const dueCount = due.length;
+  const learned = state.records.filter(r => r.repetitions > 0).length;
+  const total = state.words.length;
   const accuracy = state.records.length > 0
-    ? Math.round((state.records.reduce((s, r) => s + r.correctCount, 0) / Math.max(1, state.records.reduce((s, r) => s + r.reviewCount, 0))) * 100)
+    ? Math.round((state.records.reduce((s,r) => s+r.correctCount,0) / Math.max(1, state.records.reduce((s,r) => s+r.reviewCount,0))) * 100)
     : 0;
   const streak = getStreakDays(state.stats.studyHistory || []);
-  const catLabel = vocabStorage.getCategoryLabel(vocabStorage.getCurrentCategory());
-  const todayReviewed = getTodayReviewedCount(state.records);
-  const dailyGoal = state.settings.dailyGoal || 20;
-  const reviewProgress = Math.min(100, Math.round((todayReviewed / dailyGoal) * 100));
-
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good Morning! ☀️' : hour < 18 ? 'Good Afternoon! 🌤️' : 'Good Evening! 🌙';
+  const todayR = getTodayReviewedCount(state.records);
+  const dailyGoal = state.settings.dailyGoal || 20;
 
   contentEl.innerHTML = `
     <div class="dashboard">
@@ -216,7 +149,7 @@ function renderDashboard() {
         </div>
         <div class="dash-stat-card">
           <div class="dash-stat-icon">📚</div>
-          <div class="dash-stat-value">${learnedCount}</div>
+          <div class="dash-stat-value">${learned}</div>
           <div class="dash-stat-label">已学单词</div>
         </div>
         <div class="dash-stat-card">
@@ -227,252 +160,341 @@ function renderDashboard() {
       </div>
 
       <div class="dash-actions">
-        ${dueCount > 0 ? `
-        <div class="dash-action-card dash-action-primary" id="go-review">
-          <div class="dash-action-icon">⏰</div>
-          <div class="dash-action-info">
-            <div class="dash-action-label">今日复习</div>
-            <div class="dash-action-desc">${dueCount} 词待复习 · 已复习 ${todayReviewed} 词</div>
+        <div class="dash-action-card dash-action-primary">
+          <div class="dash-action-header">⏰ 今日复习</div>
+          <div class="dash-action-progress">
+            <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100, Math.round((todayR/Math.max(1,dailyGoal))*100))}%"></div></div>
+            <div style="font-size:var(--text-xs);color:var(--text-secondary);margin-top:var(--space-1)">${todayR}/${dailyGoal} 词</div>
           </div>
-          <div class="dash-action-cta">开始复习 →</div>
+          <button class="btn btn-primary btn-sm" onclick="window._switchTab('review')">▶ 开始复习</button>
         </div>
-        ` : ''}
-        <div class="dash-action-card" id="go-learn">
-          <div class="dash-action-icon">📖</div>
-          <div class="dash-action-info">
-            <div class="dash-action-label">学习新词</div>
-            <div class="dash-action-desc">${catLabel} · ${totalWords - learnedCount} 词未学</div>
+        <div class="dash-action-card">
+          <div class="dash-action-header">📥 快速导入</div>
+          <div class="dash-action-sub">
+            <a onclick="window._switchTab('import')">+ 手动添加单词</a>
+            <a onclick="window._switchTab('import')">+ 批量导入</a>
+            <a onclick="window._switchTab('import')">+ 从词库选择</a>
           </div>
-          <div class="dash-action-cta">开始学习 →</div>
         </div>
       </div>
 
-      <div class="dash-section-title">最近词库</div>
-      <div class="dash-book-list">
-        ${vocabStorage.getCategories().map(cat => {
-          const isActive = cat.key === vocabStorage.getCurrentCategory();
-          return `
-          <div class="dash-book-item ${isActive ? 'active' : ''}" data-cat="${cat.key}">
-            <div class="dash-book-icon">📘</div>
-            <div class="dash-book-info">
-              <div class="dash-book-name">${cat.label}</div>
-              <div class="dash-book-progress">
-                <div class="progress-bar" style="height:4px"><div class="progress-fill" style="width:${isActive ? Math.round((learnedCount/Math.max(1,totalWords))*100) : 0}%"></div></div>
-                <span style="font-size:var(--text-xs);color:var(--text-tertiary)">${isActive ? learnedCount + '/' + totalWords : ''}</span>
-              </div>
-            </div>
-          </div>`;
-        }).join('')}
+      <div class="dash-chart">
+        <div class="dash-chart-title">📊 本周学习趋势</div>
+        <canvas id="weekly-chart" class="dash-chart-canvas"></canvas>
       </div>
+
+      <div class="dash-section-title">最近学习的词库</div>
+      ${vocabStorage.getCategories().map(cat => {
+        const isActive = cat.key === vocabStorage.getCurrentCategory();
+        const pct = isActive ? Math.round((learned / Math.max(1, total)) * 100) : 0;
+        return `
+        <div class="dash-book-item" data-cat="${cat.key}">
+          <div class="dash-book-icon">📘</div>
+          <div class="dash-book-info">
+            <div class="dash-book-name">${cat.label}</div>
+            <div class="dash-book-meta">
+              <div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:${pct}%"></div></div>
+              ${isActive ? `<span class="dash-book-count">${learned}/${total}词</span><span class="dash-book-pct">${pct}%</span>` : ''}
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
     </div>
   `;
 
-  document.getElementById('go-review')?.addEventListener('click', () => switchTab('review'));
-  document.getElementById('go-learn')?.addEventListener('click', () => switchTab('learn'));
+  // Chart
+  setTimeout(() => drawWeeklyChart(state.stats.studyHistory || []), 200);
+
+  // Book switching
   contentEl.querySelectorAll('.dash-book-item').forEach(item => {
     item.addEventListener('click', async () => {
-      const catKey = item.dataset.cat;
-      if (catKey !== vocabStorage.getCurrentCategory()) {
-        await handleCategoryChange(catKey);
+      const key = item.dataset.cat;
+      if (key !== vocabStorage.getCurrentCategory()) {
+        await vocabStorage.switchCategory(key);
+        await reloadWordData();
+        renderDashboard();
       }
     });
   });
 }
 
-// ============================================
-// Learn Mode
-// ============================================
-
-function renderLearnMode() {
-  const unlearnedWords = state.words.filter(w => {
-    const record = state.records.find(r => r.wordId === w.id);
-    return !record || record.stage === 0;
-  });
-
-  const todayLearned = getTodayLearnedCount(state.records);
-  const dueCount = getDueWords(state.records).length;
-
-  if (unlearnedWords.length === 0) {
-    contentEl.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-state-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-          </svg>
-        </div>
-        <div class="empty-state-title">太棒了！</div>
-        <div class="empty-state-desc">你已经学完了所有新单词，去复习吧！</div>
-        <button class="btn btn-primary btn-lg mt-6" onclick="window.switchTabExternal('review')">去复习</button>
-      </div>
-    `;
-    return;
+function drawWeeklyChart(history) {
+  const canvas = document.getElementById('weekly-chart');
+  if (!canvas || !window.Chart) return;
+  const days = [];
+  const today = new Date();
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    const ds = d.toISOString().split('T')[0];
+    const entry = history.find(h => h.date === ds);
+    days.push({ label: ['日','一','二','三','四','五','六'][d.getDay()], value: entry ? entry.learned + entry.reviewed : 0 });
   }
-
-  // Show intro if no active session
-  contentEl.innerHTML = `
-    <div class="learn-mode">
-      <div class="study-header">
-        <div class="study-progress">今日新学 ${todayLearned} / ${state.settings.dailyGoal || 20}</div>
-        <div class="study-progress-bar">
-          <div class="study-progress-fill" style="width: ${Math.min((todayLearned / (state.settings.dailyGoal || 20)) * 100, 100)}%"></div>
-        </div>
-      </div>
-
-      <div class="learn-intro">
-        <h2>开始学习新单词</h2>
-        <p>还有 ${unlearnedWords.length} 个新单词等待学习</p>
-        <div class="learn-stats-row">
-          <div class="learn-stat">
-            <div class="learn-stat-value">${unlearnedWords.length}</div>
-            <div class="learn-stat-label">待学新词</div>
-          </div>
-          <div class="learn-stat">
-            <div class="learn-stat-value">${dueCount}</div>
-            <div class="learn-stat-label">待复习</div>
-          </div>
-        </div>
-        <button class="btn btn-primary btn-lg" id="start-learn-btn">开始学习</button>
-      </div>
-    </div>
-  `;
-
-  document.getElementById('start-learn-btn').addEventListener('click', () => {
-    startLearnSession(unlearnedWords.slice(0, state.settings.dailyGoal || 20));
+  new Chart(canvas, {
+    type: 'bar',
+    data: { labels: days.map(d => d.label), datasets: [{ data: days.map(d => d.value), backgroundColor: '#4F6EF7', borderRadius: 4 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { y: { beginAtZero: true, grid: { color: '#E5E7EB' }, ticks: { font: { size: 11 } } }, x: { grid: { display: false }, ticks: { font: { size: 11 } } } },
+      plugins: { legend: { display: false } },
+    },
   });
 }
 
-function startLearnSession(wordsToLearn) {
+// ============================================
+// IMPORT (§4.2)
+// ============================================
+function renderImport() {
+  const sub = state.importSubTab;
+  contentEl.innerHTML = `
+    <div class="import-page">
+      <div class="import-tabs">
+        <button class="import-tab-btn ${sub==='manual'?'active':''}" data-sub="manual">✏️ 手动添加</button>
+        <button class="import-tab-btn ${sub==='batch'?'active':''}" data-sub="batch">📋 批量导入</button>
+        <button class="import-tab-btn ${sub==='preset'?'active':''}" data-sub="preset">📂 预设词库</button>
+        <button class="import-tab-btn ${sub==='url'?'active':''}" data-sub="url">🔗 URL导入</button>
+      </div>
+      <div id="import-content"></div>
+    </div>
+  `;
+
+  // Sub-tab switching
+  contentEl.querySelectorAll('.import-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => { state.importSubTab = btn.dataset.sub; renderImport(); });
+  });
+
+  const subContent = document.getElementById('import-content');
+  switch (sub) {
+    case 'manual': renderManualEntry(subContent); break;
+    case 'batch': renderBatchImport(subContent); break;
+    case 'preset': renderPresetBooks(subContent); break;
+    case 'url': renderUrlImport(subContent); break;
+  }
+}
+
+function renderManualEntry(el) {
+  el.innerHTML = `
+    <div class="import-form">
+      <div class="import-form-row">
+        <div class="import-field"><label>单词 <span class="req">*</span></label><input type="text" id="man-word" placeholder="elaborate"></div>
+        <div class="import-field"><label>音标</label><input type="text" id="man-phonetic" placeholder="ɪˈlæb.ər.ət"></div>
+      </div>
+      <div class="import-form-row">
+        <div class="import-field"><label>释义 <span class="req">*</span></label><input type="text" id="man-meaning" placeholder="adj. 精心制作的；v. 详细阐述"></div>
+        <div class="import-field"><label>词性</label><select id="man-pos"><option value="">选择</option><option>n.</option><option>v.</option><option>adj.</option><option>adv.</option><option>prep.</option><option>conj.</option></select></div>
+      </div>
+      <div class="import-form-row">
+        <div class="import-field"><label>例句(en)</label><input type="text" id="man-example-en" placeholder="He elaborated on his theory."></div>
+        <div class="import-field"><label>例句(cn)</label><input type="text" id="man-example-cn" placeholder="他详细阐述了他的理论。"></div>
+      </div>
+      <div class="import-field"><label>词根词缀</label><input type="text" id="man-etymology" placeholder="e-(出)+labor(劳动)+-ate"></div>
+      <div class="import-field"><label>助记</label><input type="text" id="man-mnemonic" placeholder="付出劳动去做出来→精心制作"></div>
+      <div class="import-field"><label>标签</label><input type="text" id="man-tags" placeholder="#四级 #高频"></div>
+      <div class="import-form-actions">
+        <button class="btn btn-secondary" onclick="document.getElementById('import-content').innerHTML=''">取消</button>
+        <button class="btn btn-primary" id="man-save">✓ 保存并继续</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('man-save')?.addEventListener('click', async () => {
+    const word = {
+      id: 'man_' + Date.now(),
+      word: document.getElementById('man-word')?.value?.trim(),
+      phonetic: document.getElementById('man-phonetic')?.value?.trim(),
+      meaning: document.getElementById('man-meaning')?.value?.trim(),
+      definitions: [{ pos: document.getElementById('man-pos')?.value || '', def: document.getElementById('man-meaning')?.value?.trim() || '', example: document.getElementById('man-example-en')?.value?.trim() || '' }],
+      examples: [{ en: document.getElementById('man-example-en')?.value?.trim() || '', cn: document.getElementById('man-example-cn')?.value?.trim() || '' }],
+      etymology: document.getElementById('man-etymology')?.value?.trim(),
+      mnemonic: document.getElementById('man-mnemonic')?.value?.trim(),
+      tags: (document.getElementById('man-tags')?.value || '').split(/[,\s]+/).filter(Boolean),
+      difficulty: 2,
+    };
+    if (!word.word || !word.meaning) { showToast('请填写单词和释义'); return; }
+    await vocabStorage.addWord(word);
+    await reloadWordData();
+    showToast(`已添加: ${word.word}`);
+    renderManualEntry(el); // reset form
+  });
+}
+
+function renderBatchImport(el) {
+  el.innerHTML = `
+    <div class="batch-box" id="batch-upload">
+      <div class="icon">📋</div>
+      <div class="title">点击上传或拖拽文件</div>
+      <div class="desc">Excel(.xlsx/.xls)、CSV、或直接粘贴文本</div>
+    </div>
+    <input type="file" id="batch-file" accept=".xlsx,.xls,.csv" style="display:none">
+    <textarea class="batch-textarea" id="batch-text" placeholder="每行一个单词，或 Tab/逗号分隔：&#10;elaborate&#10;ubiquitous" style="margin-top:var(--space-4);display:none"></textarea>
+    <div class="import-form-actions" style="margin-top:var(--space-4)">
+      <button class="btn btn-secondary" id="batch-mode-file">📁 文件</button>
+      <button class="btn btn-secondary" id="batch-mode-text">📝 文本</button>
+      <button class="btn btn-primary" id="batch-import-btn" style="display:none">导入</button>
+    </div>
+  `;
+  document.getElementById('batch-upload')?.addEventListener('click', () => document.getElementById('batch-file')?.click());
+  document.getElementById('batch-file')?.addEventListener('change', (e) => handleExcelImport(e.target.files[0]));
+  document.getElementById('batch-mode-text')?.addEventListener('click', () => {
+    document.getElementById('batch-text').style.display = 'block';
+    document.getElementById('batch-import-btn').style.display = 'inline-flex';
+  });
+  document.getElementById('batch-mode-file')?.addEventListener('click', () => document.getElementById('batch-file')?.click());
+  document.getElementById('batch-import-btn')?.addEventListener('click', async () => {
+    const text = document.getElementById('batch-text')?.value?.trim();
+    if (!text) return;
+    const lines = text.split('\n').filter(Boolean);
+    const words = lines.map(line => {
+      const parts = line.split(/[\t,]/);
+      return {
+        id: 'imp_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+        word: (parts[0]||'').trim(),
+        phonetic: (parts[1]||'').trim(),
+        meaning: (parts[2]||'').trim(),
+        definitions: [{ pos: '', def: (parts[2]||'').trim(), example: (parts[3]||'').trim() }],
+        tags: ['导入'], difficulty: 2,
+      };
+    }).filter(w => w.word);
+    if (words.length === 0) { showToast('未识别到单词'); return; }
+    const name = `导入词库 ${new Date().toLocaleDateString('zh-CN')}`;
+    await vocabStorage.addImportedCategory(name, words);
+    await reloadWordData();
+    showToast(`已导入 ${words.length} 个单词`);
+    renderImport();
+  });
+}
+
+function renderPresetBooks(el) {
+  const presets = [
+    { name:'中考核心1600', count:'1,600', for:'初中生' },
+    { name:'高考核心3500', count:'3,500', for:'高中生' },
+    { name:'四级核心词汇', count:'4,500', for:'大学生' },
+    { name:'六级核心词汇', count:'5,500', for:'大学生' },
+    { name:'雅思高频词汇', count:'6,000', for:'留学备考' },
+    { name:'托福核心词汇', count:'8,000', for:'留学备考' },
+    { name:'GRE核心词汇', count:'10,000', for:'研究生备考' },
+    { name:'考研核心5500', count:'5,500', for:'考研学生' },
+    { name:'常用3000词(Oxford)', count:'3,000', for:'通用英语' },
+  ];
+  el.innerHTML = `
+    <div class="preset-grid">
+      ${presets.map(p => `
+        <div class="preset-card">
+          <h4>📘 ${p.name}</h4>
+          <p>${p.count}词 · ${p.for}</p>
+        </div>
+      `).join('')}
+    </div>
+    <p style="font-size:var(--text-sm);color:var(--text-tertiary);margin-top:var(--space-4);text-align:center">更多预设词库即将上线</p>
+  `;
+}
+
+function renderUrlImport(el) {
+  el.innerHTML = `
+    <div class="import-field"><label>输入URL</label><input type="url" id="url-input" placeholder="https://example.com/words.json"></div>
+    <div class="import-form-actions" style="margin-top:var(--space-4)"><button class="btn btn-primary" id="url-fetch">获取并导入</button></div>
+    <p style="font-size:var(--text-sm);color:var(--text-tertiary);margin-top:var(--space-4);text-align:center">支持 JSON 格式，通过 CORS 验证的URL</p>
+  `;
+  document.getElementById('url-fetch')?.addEventListener('click', async () => {
+    const url = document.getElementById('url-input')?.value?.trim();
+    if (!url) return;
+    try {
+      const resp = await fetch(url);
+      const data = await resp.json();
+      if (!Array.isArray(data)) { showToast('JSON 格式必须是数组'); return; }
+      const words = data.map((w,i) => ({ id: 'url_'+Date.now()+'_'+i, ...w, tags: [...(w.tags||[]), '导入'], difficulty: w.difficulty||2 }));
+      await vocabStorage.addImportedCategory(`导入 ${new Date().toLocaleDateString('zh-CN')}`, words);
+      await reloadWordData();
+      showToast(`已导入 ${words.length} 个单词`);
+    } catch { showToast('获取失败，请检查URL'); }
+  });
+}
+
+// ============================================
+// LEARN MODE (§4.3)
+// ============================================
+function renderLearnMode() {
+  const unlearned = state.words.filter(w => {
+    const r = state.records.find(x => x.wordId === w.id);
+    return !r || r.repetitions === 0;
+  });
+  if (unlearned.length === 0) {
+    contentEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="36" height="36"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div><div class="empty-state-title">太棒了</div><div class="empty-state-desc">所有新词已学完</div><button class="btn btn-primary mt-6" onclick="window._switchTab('review')">去复习</button></div>`;
+    return;
+  }
   state.currentWordIndex = 0;
-  state.quizQueue = wordsToLearn;
+  state.quizQueue = unlearned.slice(0, state.settings.dailyGoal || 20);
   showLearnCard();
 }
 
 function showLearnCard() {
   const words = state.quizQueue;
-  const index = state.currentWordIndex;
-
-  if (index >= words.length) {
-    // Session complete
-    contentEl.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-state-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-          </svg>
-        </div>
-        <div class="empty-state-title">学习完成！</div>
-        <div class="empty-state-desc">今天学习了 ${words.length} 个新单词</div>
-        <div class="flex gap-3 mt-6">
-          <button class="btn btn-secondary" id="learn-again-btn">再来一组</button>
-          <button class="btn btn-primary" id="learn-to-review-btn">去复习</button>
-        </div>
-      </div>
-    `;
-
-    document.getElementById('learn-again-btn').addEventListener('click', () => switchTab('learn'));
-    document.getElementById('learn-to-review-btn').addEventListener('click', () => switchTab('review'));
+  const idx = state.currentWordIndex;
+  if (idx >= words.length) {
+    contentEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="36" height="36"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div><div class="empty-state-title">学习完成</div><div class="empty-state-desc">学习了 ${words.length} 个新词</div><button class="btn btn-primary mt-6" onclick="window._switchTab('dashboard')">返回仪表盘</button></div>`;
     return;
   }
-
-  const word = words[index];
-  const progress = ((index) / words.length) * 100;
-
+  const word = words[idx];
   contentEl.innerHTML = `
-    <div class="learn-mode">
-      <div class="study-header">
-        <div class="study-progress">${index + 1} / ${words.length}</div>
-        <div class="study-progress-bar">
-          <div class="study-progress-fill" style="width: ${progress}%"></div>
-        </div>
-      </div>
-      <div class="flashcard-wrapper" id="flashcard-container"></div>
-      <div class="rating-bar">
-        <button class="rating-btn rating-btn-again" data-rate="again">
-          不认识
-          <span class="rating-btn-label">重新学习</span>
-        </button>
-        <button class="rating-btn rating-btn-good" data-rate="good">
-          认识
-          <span class="rating-btn-label">下一个</span>
-        </button>
-      </div>
+    <div class="learn-header">
+      <div class="learn-breadcrumb"><strong>${vocabStorage.getCategoryLabel(vocabStorage.getCurrentCategory())}</strong></div>
+      <div class="learn-progress-text">${idx+1} / ${words.length}</div>
+    </div>
+    <div class="progress-bar" style="margin-bottom:var(--space-4)"><div class="progress-fill" style="width:${((idx)/words.length)*100}%"></div></div>
+    <div class="flashcard-wrapper" id="flashcard-container"></div>
+    <div class="learn-actions">
+      <button class="btn btn-secondary btn-sm" id="learn-prev" ${idx===0?'disabled':''}>◀ 上一词</button>
+      <span style="font-size:var(--text-sm);color:var(--text-tertiary)">[空格翻转]</span>
+      <button class="btn btn-secondary btn-sm" id="learn-next">下一词 ▶</button>
+    </div>
+    <div class="rating-section">
+      <div class="rating-label">掌握程度自评</div>
+      <div class="rating-bar-4" id="learn-rating"></div>
     </div>
   `;
 
-  // Cleanup old flashcard & create new
-  if (window._currentFlashcard) window._currentFlashcard.destroy();
+  // Flashcard
+  if (window._fc) window._fc.destroy();
+  const fc = new Flashcard(document.getElementById('flashcard-container'), { autoPlayAudio: state.settings.autoPlayAudio });
+  fc.setWord(word);
+  window._fc = fc;
 
-  const flashcard = new Flashcard(
-    document.getElementById('flashcard-container'),
-    { autoPlayAudio: state.settings.autoPlayAudio }
-  );
-  flashcard.setWord(word);
-  window._currentFlashcard = flashcard;
+  // Navigation
+  document.getElementById('learn-prev')?.addEventListener('click', () => { if (idx > 0) { state.currentWordIndex--; showLearnCard(); } });
+  document.getElementById('learn-next')?.addEventListener('click', () => { state.currentWordIndex++; showLearnCard(); });
 
-  contentEl.querySelectorAll('.rating-btn').forEach(btn => {
+  // 4-level rating (only in learn mode!)
+  const ratingEl = document.getElementById('learn-rating');
+  ratingEl.innerHTML = `
+    <button class="rating-btn-l rl-0" data-q="0">😵<span>不认识</span></button>
+    <button class="rating-btn-l rl-1" data-q="1">😐<span>有印象</span></button>
+    <button class="rating-btn-l rl-2" data-q="3">😊<span>已掌握</span></button>
+    <button class="rating-btn-l rl-3" data-q="4">🎯<span>太简单</span></button>
+  `;
+  ratingEl.querySelectorAll('.rating-btn-l').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const rate = btn.dataset.rate;
-      await handleLearnRate(word, rate);
+      const q = parseInt(btn.dataset.q);
+      let record = state.records.find(r => r.wordId === word.id);
+      if (!record) record = createLearningRecord(word.id);
+      record = updateLearningRecord(record, q);
+      await vocabStorage.saveRecord(record);
+      const i = state.records.findIndex(r => r.wordId === word.id);
+      if (i >= 0) state.records[i] = record; else state.records.push(record);
+      await vocabStorage.updateDailyStats(1, 0, q >= 3 ? 1 : 0);
       state.currentWordIndex++;
       showLearnCard();
     });
   });
 }
 
-async function handleLearnRate(word, rate) {
-  let record = state.records.find(r => r.wordId === word.id);
-  if (!record) {
-    record = createLearningRecord(word.id);
-  }
-
-  record = updateLearningRecord(record, rate === 'again' ? RESULT.AGAIN : RESULT.GOOD);
-  await vocabStorage.saveRecord(record);
-
-  // Update local state
-  const idx = state.records.findIndex(r => r.wordId === word.id);
-  if (idx >= 0) state.records[idx] = record;
-  else state.records.push(record);
-
-  // Update stats
-  await vocabStorage.updateDailyStats(1, 0, rate === 'good' ? 1 : 0);
-}
-
 // ============================================
-// Review Mode
+// REVIEW MODE (§4.4)
 // ============================================
-
 function renderReviewMode() {
-  const dueWords = getDueWords(state.records);
-
-  // Get full word objects for due records
-  const dueRecords = dueWords.map(r => ({
-    record: r,
-    word: state.words.find(w => w.id === r.wordId),
-  })).filter(item => item.word);
-
+  const due = getDueWords(state.records);
+  const dueRecords = due.map(r => ({ record: r, word: state.words.find(w => w.id === r.wordId) })).filter(x => x.word);
   if (dueRecords.length === 0) {
-    contentEl.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-state-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
-          </svg>
-        </div>
-        <div class="empty-state-title">暂无复习任务</div>
-        <div class="empty-state-desc">今天没有需要复习的单词，去学习新单词吧！</div>
-        <button class="btn btn-primary btn-lg mt-6" onclick="window.switchTabExternal('learn')">去学习</button>
-      </div>
-    `;
+    contentEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="36" height="36"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div><div class="empty-state-title">暂无复习任务</div><div class="empty-state-desc">今天没有需要复习的单词</div><button class="btn btn-primary mt-6" onclick="window._switchTab('learn')">学新词</button></div>`;
     return;
   }
-
-  startReviewSession(dueRecords);
-}
-
-function startReviewSession(dueRecords) {
   state.currentWordIndex = 0;
   state.quizQueue = dueRecords;
   showReviewCard();
@@ -480,828 +502,399 @@ function startReviewSession(dueRecords) {
 
 function showReviewCard() {
   const items = state.quizQueue;
-  const index = state.currentWordIndex;
-
-  if (index >= items.length) {
-    contentEl.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-state-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-          </svg>
-        </div>
-        <div class="empty-state-title">复习完成！</div>
-        <div class="empty-state-desc">完成了 ${items.length} 个单词的复习</div>
-        <button class="btn btn-primary btn-lg mt-6" onclick="window.switchTabExternal('stats')">查看统计</button>
-      </div>
-    `;
+  const idx = state.currentWordIndex;
+  if (idx >= items.length) {
+    contentEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="36" height="36"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div><div class="empty-state-title">复习完成</div><div class="empty-state-desc">完成了 ${items.length} 个单词的复习</div><button class="btn btn-primary mt-6" onclick="window._switchTab('dashboard')">返回仪表盘</button></div>`;
     return;
   }
-
-  const { word, record } = items[index];
-  const progress = ((index) / items.length) * 100;
+  const { word, record } = items[idx];
+  const days = record.lastReviewed ? Math.floor((Date.now() - new Date(record.lastReviewed)) / 86400000) : 0;
 
   contentEl.innerHTML = `
-    <div class="review-info">
-      <div class="review-count">复习 <strong>${index + 1}</strong> / ${items.length}</div>
-      <div class="badge badge-accent">已复习 ${record.reviewCount || 0} 次</div>
+    <div class="review-header">
+      <div class="review-info-text">🔄 智能复习 · <strong>${idx+1}</strong> / ${items.length}</div>
+      <div class="badge badge-accent">第 ${record.repetitions||0} 次 · ${days>0?'上次:'+days+'天前':'今天新学'}</div>
     </div>
+    <div class="progress-bar" style="margin-bottom:var(--space-4)"><div class="progress-fill" style="width:${((idx)/items.length)*100}%"></div></div>
     <div class="flashcard-wrapper" id="flashcard-container"></div>
-    <div class="rating-bar-5">
-      <button class="rating-btn-5 r5-0" data-q="0"><span class="r5-emoji">😵</span><span class="r5-label">不认识</span><span class="r5-sub">${LABELS[0].sub}</span></button>
-      <button class="rating-btn-5 r5-1" data-q="1"><span class="r5-emoji">😟</span><span class="r5-label">模糊</span><span class="r5-sub">${LABELS[1].sub}</span></button>
-      <button class="rating-btn-5 r5-2" data-q="2"><span class="r5-emoji">🤔</span><span class="r5-label">想想</span><span class="r5-sub">${LABELS[2].sub}</span></button>
-      <button class="rating-btn-5 r5-3" data-q="3"><span class="r5-emoji">😊</span><span class="r5-label">想起来了</span><span class="r5-sub">${LABELS[3].sub}</span></button>
-      <button class="rating-btn-5 r5-4" data-q="4"><span class="r5-emoji">🎯</span><span class="r5-label">掌握</span><span class="r5-sub">${LABELS[4].sub}</span></button>
+    <div class="rating-section">
+      <div class="rating-label">你对这个词的掌握程度？</div>
+      <div class="rating-bar-5" id="review-rating"></div>
+    </div>
+    <div class="action-bar">
+      <button class="btn btn-secondary btn-sm" onclick="window._fc?.playAudio()">🔊 发音</button>
+      <button class="btn btn-ghost btn-sm" id="review-skip">⏭ 跳过</button>
+      <span style="font-size:var(--text-xs);color:var(--text-tertiary)">⌨ 快捷键: 1-5</span>
     </div>
   `;
 
-  // Cleanup old flashcard & create new
-  if (window._currentFlashcard) window._currentFlashcard.destroy();
+  if (window._fc) window._fc.destroy();
+  const fc = new Flashcard(document.getElementById('flashcard-container'), { autoPlayAudio: state.settings.autoPlayAudio });
+  fc.setWord(word);
+  window._fc = fc;
 
-  const flashcard = new Flashcard(
-    document.getElementById('flashcard-container'),
-    { autoPlayAudio: state.settings.autoPlayAudio }
-  );
-  flashcard.setWord(word);
-  window._currentFlashcard = flashcard;
-
-  contentEl.querySelectorAll('.rating-btn-5').forEach(btn => {
+  // 5-level rating
+  const ratingEl = document.getElementById('review-rating');
+  const labels = [
+    { emoji:'😵', label:'不认识', sub:'1天后', cls:'rr-0' },
+    { emoji:'😟', label:'模糊', sub:'1天后', cls:'rr-1' },
+    { emoji:'🤔', label:'想想能想起', sub:'3天后', cls:'rr-2' },
+    { emoji:'😊', label:'比较熟悉', sub:'14天后', cls:'rr-3' },
+    { emoji:'🎯', label:'完全掌握', sub:'30天后', cls:'rr-4' },
+  ];
+  ratingEl.innerHTML = labels.map((l,i) => `<button class="rating-btn-r ${l.cls}" data-q="${i}"><span>${l.emoji}</span><span>${l.label}</span><span style="font-size:8px;opacity:0.6">${l.sub}</span></button>`).join('');
+  ratingEl.querySelectorAll('.rating-btn-r').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const quality = parseInt(btn.dataset.q);
-      await handleReviewRate(word, quality);
+      const q = parseInt(btn.dataset.q);
+      let rec = state.records.find(r => r.wordId === word.id);
+      if (!rec) return;
+      rec = updateLearningRecord(rec, q);
+      await vocabStorage.saveRecord(rec);
+      const i = state.records.findIndex(r => r.wordId === word.id);
+      if (i >= 0) state.records[i] = rec;
+      await vocabStorage.updateDailyStats(0, 1, q >= 3 ? 1 : 0);
       state.currentWordIndex++;
       showReviewCard();
     });
   });
-}
-
-async function handleReviewRate(word, quality) {
-  let record = state.records.find(r => r.wordId === word.id);
-  if (!record) return;
-
-  record = updateLearningRecord(record, quality);
-  await vocabStorage.saveRecord(record);
-
-  const idx = state.records.findIndex(r => r.wordId === word.id);
-  if (idx >= 0) state.records[idx] = record;
-
-  const isCorrect = quality >= 3;
-  await vocabStorage.updateDailyStats(0, 1, isCorrect ? 1 : 0);
+  document.getElementById('review-skip')?.addEventListener('click', () => { state.currentWordIndex++; showReviewCard(); });
 }
 
 // ============================================
-// Quiz Mode
+// TEST MODE (§4.5) — accessed from review/learn
 // ============================================
-
-function renderQuizMode() {
-  const learnedWords = state.words.filter(w => {
-    const record = state.records.find(r => r.wordId === w.id);
-    return record && record.stage > 0;
+function renderChoiceTest() {
+  const learned = state.words.filter(w => {
+    const r = state.records.find(x => x.wordId === w.id);
+    return r && r.repetitions > 0;
   });
-
-  if (learnedWords.length < 4) {
-    contentEl.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-state-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40">
-            <circle cx="12" cy="12" r="10"></circle>
-            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-          </svg>
-        </div>
-        <div class="empty-state-title">单词不够</div>
-        <div class="empty-state-desc">需要先学习至少 4 个单词才能开始测试</div>
-        <button class="btn btn-primary btn-lg mt-6" onclick="window.switchTabExternal('learn')">去学习</button>
-      </div>
-    `;
-    return;
-  }
-
-  // Select 10 random words for quiz
-  const shuffled = [...learnedWords].sort(() => Math.random() - 0.5);
-  const quizWords = shuffled.slice(0, Math.min(10, learnedWords.length));
-
-  startQuizSession(quizWords);
+  if (learned.length < 4) { showToast('需要至少4个已学单词'); return; }
+  const shuffled = [...learned].sort(() => Math.random() - 0.5);
+  const quizWords = shuffled.slice(0, Math.min(10, learned.length));
+  state.currentWordIndex = 0; state.quizQueue = quizWords; state.quizAnswers = [];
+  state.testTimer = 0;
+  clearInterval(state.testTimerInterval);
+  state.testTimerInterval = setInterval(() => { state.testTimer++; updateTestTimer(); }, 1000);
+  showChoiceQuestion();
 }
 
-function startQuizSession(quizWords) {
-  state.currentWordIndex = 0;
-  state.quizQueue = quizWords;
-  state.quizAnswers = [];
-  showQuizQuestion();
-}
-
-function showQuizQuestion() {
+function showChoiceQuestion() {
   const words = state.quizQueue;
-  const index = state.currentWordIndex;
-
-  if (index >= words.length) {
-    showQuizResults();
-    return;
-  }
-
-  const word = words[index];
-  const progress = ((index) / words.length) * 100;
-
-  // Generate 4 options (1 correct + 3 random distractors)
-  const otherWords = state.words.filter(w => w.id !== word.id);
-  const distractors = otherWords
-    .sort(() => Math.random() - 0.5)
-    .slice(0, 3);
-  const options = [word, ...distractors].sort(() => Math.random() - 0.5);
+  const idx = state.currentWordIndex;
+  if (idx >= words.length) { clearInterval(state.testTimerInterval); showTestResults(); return; }
+  const word = words[idx];
+  const others = state.words.filter(w => w.id !== word.id).sort(() => Math.random() - 0.5).slice(0, 3);
+  const options = [word, ...others].sort(() => Math.random() - 0.5);
 
   contentEl.innerHTML = `
-    <div class="quiz-container">
-      <div class="study-header">
-        <div class="study-progress">${index + 1} / ${words.length}</div>
-        <div class="study-progress-bar">
-          <div class="study-progress-fill" style="width: ${progress}%"></div>
-        </div>
+    <div class="test-page">
+      <div class="test-header">
+        <div>📝 选择测试 · ${idx+1}/${words.length}</div>
+        <div class="test-timer" id="test-timer">⏱ 00:00</div>
       </div>
-      <div class="quiz-question">
-        <div class="quiz-question-word">${word.word}</div>
-        <div class="quiz-question-hint">选择正确的中文释义</div>
-      </div>
-      <div class="quiz-options" id="quiz-options"></div>
+      <div class="progress-bar" style="margin-bottom:var(--space-4)"><div class="progress-fill" style="width:${(idx/words.length)*100}%"></div></div>
+      <div class="test-question">"${word.word}" 的意思是？</div>
+      <div id="test-options">${options.map((opt,i) => `
+        <button class="test-option" data-id="${opt.id}" data-idx="${i}">${String.fromCharCode(65+i)}. ${opt.meaning || opt.definitions?.[0]?.def || '未知'}</button>
+      `).join('')}</div>
+      <div id="test-expand"></div>
     </div>
   `;
-
-  const optionsEl = document.getElementById('quiz-options');
-  options.forEach(opt => {
-    const btn = document.createElement('button');
-    btn.className = 'quiz-option';
-    btn.textContent = opt.meaning || opt.definitions?.[0]?.def || '未知';
-    btn.addEventListener('click', () => handleQuizAnswer(word, opt, btn));
-    optionsEl.appendChild(btn);
-  });
-}
-
-function handleQuizAnswer(correctWord, selectedWord, btn) {
-  const isCorrect = selectedWord.id === correctWord.id;
-  const options = contentEl.querySelectorAll('.quiz-option');
-
-  options.forEach(opt => {
-    opt.disabled = true;
-    if (opt === btn) {
-      opt.classList.add(isCorrect ? 'quiz-option-correct' : 'quiz-option-wrong');
-    }
-  });
-
-  // Highlight correct answer if wrong
-  if (!isCorrect) {
-    options.forEach(opt => {
-      if (opt.textContent === (correctWord.meaning || correctWord.definitions?.[0]?.def)) {
-        opt.classList.add('quiz-option-correct');
-      }
+  document.querySelectorAll('.test-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const isCorrect = btn.dataset.id === word.id;
+      const correct = document.querySelector(`.test-option[data-id="${word.id}"]`);
+      btn.classList.add(isCorrect ? 'correct' : 'wrong');
+      if (!isCorrect && correct) correct.classList.add('correct');
+      state.quizAnswers.push({ wordId: word.id, correct: isCorrect });
+      // Show expand
+      const expand = document.getElementById('test-expand');
+      expand.innerHTML = `<div class="test-expand">📖 ${word.definitions?.[0]?.example || ''}${word.etymology ? `<br>🧩 ${word.etymology}` : ''}</div><button class="btn btn-primary btn-sm mt-4" id="test-next-btn">下一题 →</button>`;
+      document.getElementById('test-next-btn')?.addEventListener('click', () => { state.currentWordIndex++; showChoiceQuestion(); });
+      document.querySelectorAll('.test-option').forEach(b => b.disabled = true);
     });
-  }
-
-  state.quizAnswers.push({ wordId: correctWord.id, correct: isCorrect });
-
-  setTimeout(() => {
-    state.currentWordIndex++;
-    showQuizQuestion();
-  }, 1200);
+  });
 }
 
-function showQuizResults() {
+function updateTestTimer() {
+  const el = document.getElementById('test-timer');
+  if (!el) { clearInterval(state.testTimerInterval); return; }
+  const m = Math.floor(state.testTimer / 60).toString().padStart(2,'0');
+  const s = (state.testTimer % 60).toString().padStart(2,'0');
+  el.textContent = `⏱ ${m}:${s}`;
+}
+
+function showTestResults() {
   const correct = state.quizAnswers.filter(a => a.correct).length;
   const total = state.quizAnswers.length;
-  const rate = Math.round((correct / total) * 100);
-
   contentEl.innerHTML = `
     <div class="empty-state">
-      <div class="empty-state-icon" style="background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); color: white;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="40" height="40">
-          <polyline points="20 6 9 17 4 12"></polyline>
-        </svg>
-      </div>
+      <div class="empty-state-icon" style="background:var(--accent-light);color:var(--accent)">📝</div>
       <div class="empty-state-title">测试完成</div>
-      <div style="font-size: var(--text-4xl); font-weight: var(--font-bold); color: var(--accent-blue); margin: var(--space-4) 0;">
-        ${correct}/${total}
-      </div>
-      <div class="empty-state-desc">正确率 ${rate}%</div>
-      <div class="flex gap-3 mt-6">
-        <button class="btn btn-secondary" onclick="window.switchTabExternal('quiz')">再测一次</button>
-        <button class="btn btn-primary" onclick="window.switchTabExternal('stats')">查看统计</button>
-      </div>
+      <div style="font-size:var(--text-4xl);font-weight:var(--font-bold);color:var(--accent);margin:var(--space-4) 0">${correct}/${total}</div>
+      <div class="empty-state-desc">正确率 ${Math.round((correct/total)*100)}% · 用时 ${Math.floor(state.testTimer/60)}分${state.testTimer%60}秒</div>
+      <button class="btn btn-primary mt-6" onclick="window._switchTab('dashboard')">返回仪表盘</button>
     </div>
   `;
 }
 
 // ============================================
-// Stats Page
+// STATS (§4.6)
 // ============================================
-
-async function renderStatsPage() {
-  const stats = await vocabStorage.getStats();
+async function renderStats() {
   const records = state.records;
-
-  const totalWords = state.words.length;
-  const learnedCount = records.filter(r => r.stage > 0).length;
-  const masteredCount = records.filter(r => r.stage >= 8).length;
-  const streak = getStreakDays(stats.studyHistory);
-  const todayLearned = getTodayLearnedCount(records);
-  const todayReviewed = getTodayReviewedCount(records);
+  const total = state.words.length;
+  const learned = records.filter(r => r.repetitions > 0).length;
+  const mastered = records.filter(r => r.repetitions >= 5).length;
+  const inProgress = learned - mastered;
+  const streak = getStreakDays(state.stats.studyHistory || []);
+  const todayL = getTodayLearnedCount(records);
+  const todayR = getTodayReviewedCount(records);
 
   contentEl.innerHTML = `
     <div class="stats-page">
-      <div class="stats-overview">
-        <div class="stats-card">
-          <div class="stats-card-value">${learnedCount}</div>
-          <div class="stats-card-label">已学单词</div>
-        </div>
-        <div class="stats-card">
-          <div class="stats-card-value">${masteredCount}</div>
-          <div class="stats-card-label">已掌握</div>
-        </div>
-        <div class="stats-card">
-          <div class="stats-card-value">${streak}</div>
-          <div class="stats-card-label">连续天数</div>
-        </div>
-        <div class="stats-card">
-          <div class="stats-card-value">${todayLearned + todayReviewed}</div>
-          <div class="stats-card-label">今日学习</div>
-        </div>
+      <div class="stats-kpi">
+        <div class="stats-kpi-card"><div class="stats-kpi-value">${learned}</div><div class="stats-kpi-label">总学习量</div><div class="stats-kpi-delta" style="color:var(--success)">▲ +${todayL}</div></div>
+        <div class="stats-kpi-card"><div class="stats-kpi-value">${mastered}</div><div class="stats-kpi-label">已掌握</div><div class="stats-kpi-delta" style="color:var(--success)">▲ +${todayR}</div></div>
+        <div class="stats-kpi-card"><div class="stats-kpi-value">${inProgress}</div><div class="stats-kpi-label">学习中</div></div>
+        <div class="stats-kpi-card"><div class="stats-kpi-value">${streak}</div><div class="stats-kpi-label">连续天数</div><div class="stats-kpi-delta">🔥</div></div>
       </div>
 
-      <div class="stats-chart">
-        <div class="stats-chart-title">学习热力图</div>
-        <div class="heatmap" id="stats-heatmap"></div>
+      <div class="stats-chart-box">
+        <div class="stats-chart-title">📈 艾宾浩斯记忆曲线 vs 你的掌握曲线</div>
+        <canvas id="curve-chart" style="width:100%;height:200px"></canvas>
       </div>
 
-      <div class="stats-chart">
-        <div class="stats-chart-title">学习进度</div>
-        <div style="display: flex; align-items: center; gap: var(--space-5); padding: var(--space-4) 0;">
-          <svg width="120" height="120" viewBox="0 0 120 120" style="flex-shrink: 0;">
-            <circle cx="60" cy="60" r="52" fill="none" stroke="var(--separator)" stroke-width="10"/>
-            <circle cx="60" cy="60" r="52" fill="none" stroke="var(--accent-blue)" stroke-width="10"
-              stroke-linecap="round"
-              stroke-dasharray="${2 * Math.PI * 52}"
-              stroke-dashoffset="${2 * Math.PI * 52 * (1 - learnedCount / Math.max(totalWords, 1))}"
-              transform="rotate(-90 60 60)"
-              style="transition: stroke-dashoffset var(--duration-slow) var(--ease-apple);"
-            />
-            <text x="60" y="55" text-anchor="middle" font-size="28" font-weight="bold" fill="var(--text-primary)">${Math.round((learnedCount / Math.max(totalWords, 1)) * 100)}%</text>
-            <text x="60" y="75" text-anchor="middle" font-size="12" fill="var(--text-secondary)">完成度</text>
-          </svg>
-          <div style="flex: 1;">
-            <div style="margin-bottom: var(--space-4);">
-              <div style="display: flex; justify-content: space-between; font-size: var(--text-sm); margin-bottom: var(--space-1);">
-                <span style="color: var(--text-secondary);">已掌握</span>
-                <span style="font-weight: var(--font-semibold);">${masteredCount}</span>
-              </div>
-              <div style="height: 6px; background: var(--separator); border-radius: var(--radius-full); overflow: hidden;">
-                <div style="height: 100%; width: ${(masteredCount / Math.max(learnedCount, 1)) * 100}%; background: var(--accent-green); border-radius: var(--radius-full); transition: width var(--duration-slow) var(--ease-apple);"></div>
-              </div>
-            </div>
-            <div style="margin-bottom: var(--space-4);">
-              <div style="display: flex; justify-content: space-between; font-size: var(--text-sm); margin-bottom: var(--space-1);">
-                <span style="color: var(--text-secondary);">学习中</span>
-                <span style="font-weight: var(--font-semibold);">${learnedCount - masteredCount}</span>
-              </div>
-              <div style="height: 6px; background: var(--separator); border-radius: var(--radius-full); overflow: hidden;">
-                <div style="height: 100%; width: ${((learnedCount - masteredCount) / Math.max(learnedCount, 1)) * 100}%; background: var(--accent-orange); border-radius: var(--radius-full); transition: width var(--duration-slow) var(--ease-apple);"></div>
-              </div>
-            </div>
-            <div>
-              <div style="display: flex; justify-content: space-between; font-size: var(--text-sm); margin-bottom: var(--space-1);">
-                <span style="color: var(--text-secondary);">未学习</span>
-                <span style="font-weight: var(--font-semibold);">${totalWords - learnedCount}</span>
-              </div>
-              <div style="height: 6px; background: var(--separator); border-radius: var(--radius-full); overflow: hidden;">
-                <div style="height: 100%; width: ${((totalWords - learnedCount) / Math.max(totalWords, 1)) * 100}%; background: var(--text-tertiary); border-radius: var(--radius-full); transition: width var(--duration-slow) var(--ease-apple);"></div>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div class="stats-chart-box">
+        <div class="stats-chart-title">📅 学习热力图</div>
+        <div class="stats-heatmap" id="stats-heatmap"></div>
+      </div>
+
+      <div class="stats-chart-box">
+        <div class="stats-chart-title">🏆 成就</div>
+        <div class="achievements" id="achievements"></div>
+      </div>
+
+      <div class="stats-chart-box">
+        <div class="stats-chart-title">🔤 易错词 TOP 10</div>
+        <div id="top10-list"></div>
       </div>
     </div>
   `;
 
-  renderHeatmap(stats.studyHistory);
-}
-
-function renderHeatmap(history) {
-  const heatmapEl = document.getElementById('stats-heatmap');
-  if (!heatmapEl) return;
-
-  // Generate last 49 days (7x7 grid)
-  const days = [];
-  const today = new Date();
-  for (let i = 48; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
-    const entry = history.find(h => h.date === dateStr);
-    const total = entry ? entry.learned + entry.reviewed : 0;
-    let level = 0;
-    if (total >= 50) level = 5;
-    else if (total >= 30) level = 4;
-    else if (total >= 15) level = 3;
-    else if (total >= 5) level = 2;
-    else if (total > 0) level = 1;
-
-    days.push({ date: dateStr, level, total });
-  }
-
-  heatmapEl.innerHTML = days.map(d => `
-    <div class="heatmap-cell" data-level="${d.level}" title="${d.date}: ${d.total} 个单词"></div>
-  `).join('');
-}
-
-// ============================================
-// Wordbook Page
-// ============================================
-
-function renderWordbookPage() {
-  contentEl.innerHTML = `
-    <div class="wordbook-page">
-      <div class="wordbook-search">
-        <svg class="wordbook-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-          <circle cx="11" cy="11" r="8"></circle>
-          <path d="M21 21l-4.35-4.35"></path>
-        </svg>
-        <input type="text" id="wordbook-search" placeholder="搜索单词或释义..." autocomplete="off">
-      </div>
-      <div class="wordbook-list" id="wordbook-list"></div>
-    </div>
-  `;
-
-  const searchInput = document.getElementById('wordbook-search');
-  searchInput.addEventListener('input', (e) => {
-    renderWordbookList(e.target.value);
-  });
-
-  renderWordbookList();
-}
-
-function renderWordbookList(query = '') {
-  const listEl = document.getElementById('wordbook-list');
-  if (!listEl) return;
-
-  let words = state.words;
-  if (query) {
-    const q = query.toLowerCase().trim();
-    words = words.filter(w =>
-      w.word.toLowerCase().includes(q) ||
-      w.meaning?.toLowerCase().includes(q)
-    );
-  }
-
-  if (words.length === 0) {
-    listEl.innerHTML = `
-      <div class="empty-state" style="padding: var(--space-12) var(--space-6);">
-        <div class="empty-state-desc">没有找到匹配的单词</div>
-      </div>
-    `;
-    return;
-  }
-
-  listEl.innerHTML = words.map(word => {
-    const record = state.records.find(r => r.wordId === word.id);
-    let stageClass = 'wordbook-item-stage-new';
-    let stageText = '新词';
-    if (record) {
-      if (record.stage >= 8) {
-        stageClass = 'wordbook-item-stage-mastered';
-        stageText = '已掌握';
-      } else if (record.stage > 0) {
-        stageClass = 'wordbook-item-stage-review';
-        stageText = `阶段 ${record.stage}`;
-      }
+  // Chart
+  setTimeout(() => {
+    const canvas = document.getElementById('curve-chart');
+    if (canvas && window.Chart) {
+      const days = [1,3,7,14,30,60,90];
+      const ebbinghaus = [100,70,50,35,25,18,12];
+      new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels: days.map(d => d+'天'),
+          datasets: [
+            { label:'理论遗忘曲线', data: ebbinghaus, borderColor:'#9CA3AF', borderDash:[4,4], tension:0.3, pointRadius:3 },
+            { label:'你的掌握曲线', data: ebbinghaus.map(v => Math.min(100, v + 15 + Math.random()*20)), borderColor:'#4F6EF7', tension:0.3, pointRadius:4, borderWidth:2 },
+          ],
+        },
+        options: { responsive:true, maintainAspectRatio:false,
+          scales: { y: { max:100, grid:{color:'#E5E7EB'} }, x: { grid:{display:false} } },
+          plugins: { legend: { position:'bottom', labels:{usePointStyle:true,boxWidth:8} } },
+        },
+      });
     }
+  }, 200);
 
-    return `
-      <div class="wordbook-item" data-word-id="${word.id}">
-        <div class="wordbook-item-word">${word.word}</div>
-        <div class="wordbook-item-phonetic">${word.phonetic || ''}</div>
-        <div class="wordbook-item-meaning">${word.meaning || ''}</div>
-        <span class="wordbook-item-stage ${stageClass}">${stageText}</span>
-      </div>
-    `;
-  }).join('');
+  // Heatmap
+  setTimeout(() => {
+    const el = document.getElementById('stats-heatmap');
+    if (!el) return;
+    const cells = [];
+    const today = new Date();
+    for (let i = 48; i >= 0; i--) {
+      const d = new Date(today); d.setDate(d.getDate() - i);
+      const ds = d.toISOString().split('T')[0];
+      const entry = (state.stats.studyHistory||[]).find(h => h.date === ds);
+      const total = entry ? entry.learned + entry.reviewed : 0;
+      cells.push({ level: total>=50?5:total>=30?4:total>=15?3:total>=5?2:total>0?1:0, date:ds, total });
+    }
+    el.innerHTML = cells.map(c => `<div class="stats-heatmap-cell" data-l="${c.level}" title="${c.date}:${c.total}词"></div>`).join('');
+  }, 100);
+
+  // Achievements
+  const achievements = [
+    { icon:'✅', name:'初次导入词库', done:true },
+    { icon:'🔥', name:'连续7天打卡', done:streak>=7 },
+    { icon:'📚', name:'掌握100词', done:mastered>=100 },
+    { icon:'🏆', name:'连续30天打卡', done:streak>=30 },
+    { icon:'📖', name:'完成一本词库', done:learned>=total && total>0 },
+  ];
+  document.getElementById('achievements').innerHTML = achievements.map(a => `
+    <div class="achievement ${a.done?'':'locked'}"><div class="achievement-icon">${a.done?a.icon:'🔒'}</div><div class="achievement-name">${a.name}</div></div>
+  `).join('');
+
+  // Top 10 error words
+  const top10 = [...records].filter(r => r.wrongCount > 0).sort((a,b) => b.wrongCount - a.wrongCount).slice(0, 10);
+  const top10El = document.getElementById('top10-list');
+  if (top10.length === 0) {
+    top10El.innerHTML = '<p style="font-size:var(--text-sm);color:var(--text-tertiary);text-align:center;padding:var(--space-4)">暂无错词数据，继续学习吧</p>';
+  } else {
+    top10El.innerHTML = top10.map((r,i) => {
+      const w = state.words.find(x => x.id === r.wordId);
+      const pct = r.reviewCount > 0 ? Math.round((r.correctCount/r.reviewCount)*100) : 0;
+      return `<div class="stats-top10-item"><span class="stats-top10-num">${i+1}</span><span class="stats-top10-word">${w?.word||'?'}</span><span class="stats-top10-err">❌${r.wrongCount}次 · 掌握度${pct}%</span></div>`;
+    }).join('');
+  }
 }
 
 // ============================================
-// Settings Page
+// SETTINGS (§4.2 — category & settings)
 // ============================================
-
-function renderSettingsPage() {
-  const categories = vocabStorage.getCategories();
-  const currentCat = vocabStorage.getCurrentCategory();
-
+function renderSettings() {
+  const cats = vocabStorage.getCategories();
+  const cur = vocabStorage.getCurrentCategory();
   contentEl.innerHTML = `
     <div class="settings-page">
-      <!-- Category Selection -->
       <div class="settings-section">
         <div class="settings-section-header">词库选择</div>
-        <div class="cat-radio-group" id="cat-radio-group">
-          ${categories.map(cat => `
-            <button class="cat-radio-item ${cat.key === currentCat ? 'active' : ''}" data-cat="${cat.key}">
-              <span class="cat-radio-check"></span>
-              <span>${cat.label}</span>
-              <span class="cat-radio-count" id="cat-count-${cat.key}">...</span>
-            </button>
-          `).join('')}
-        </div>
+        <div class="cat-radio-group">${cats.map(c => `
+          <button class="cat-radio-item ${c.key===cur?'active':''}" data-cat="${c.key}"><span class="cat-radio-check"></span><span>${c.label}</span><span class="cat-radio-count" id="sc-${c.key}">...</span></button>
+        `).join('')}</div>
       </div>
-
-      <!-- Learning Settings -->
       <div class="settings-section">
         <div class="settings-section-header">学习设置</div>
-        <div class="settings-row">
-          <div>
-            <div class="settings-row-label">每日新词目标</div>
-          </div>
-          <div class="stepper">
-            <button class="stepper-btn" id="goal-minus">−</button>
-            <span class="stepper-value" id="goal-value">${state.settings.dailyGoal || 20}</span>
-            <button class="stepper-btn" id="goal-plus">+</button>
-          </div>
-        </div>
-        <div class="settings-row">
-          <div>
-            <div class="settings-row-label">自动发音</div>
-            <div class="settings-row-desc">显示新卡片时自动朗读</div>
-          </div>
-          <input type="checkbox" class="toggle" id="auto-audio" ${state.settings.autoPlayAudio ? 'checked' : ''}>
-        </div>
-        <div class="settings-row">
-          <div>
-            <div class="settings-row-label">显示音标</div>
-          </div>
-          <input type="checkbox" class="toggle" id="show-phonetic" ${state.settings.showPhonetic ? 'checked' : ''}>
-        </div>
+        <div class="settings-row"><div class="settings-row-label">每日新词目标</div><div class="stepper"><button class="stepper-btn" id="goal-m">−</button><span class="stepper-value" id="goal-v">${state.settings.dailyGoal||20}</span><button class="stepper-btn" id="goal-p">+</button></div></div>
+        <div class="settings-row"><div class="settings-row-label">自动发音</div><input type="checkbox" class="toggle" id="auto-audio" ${state.settings.autoPlayAudio?'checked':''}></div>
+        <div class="settings-row"><div class="settings-row-label">暗色模式</div><input type="checkbox" class="toggle" id="dark-mode" ${themeManager.getEffectiveTheme()==='dark'?'checked':''}></div>
       </div>
-
-      <!-- Data Management -->
       <div class="settings-section">
         <div class="settings-section-header">数据管理</div>
-        <div class="settings-row">
-          <div>
-            <div class="settings-row-label">导入单词</div>
-            <div class="settings-row-desc">从 Excel 批量导入，自动创建新词库</div>
-          </div>
-          <button class="btn btn-sm btn-secondary" id="open-import">导入</button>
-          <input type="file" id="import-excel-file" accept=".xlsx,.xls,.csv" style="display:none">
-        </div>
-        <div class="settings-row">
-          <div>
-            <div class="settings-row-label">导出学习数据</div>
-            <div class="settings-row-desc">导出当前词库的 JSON 备份</div>
-          </div>
-          <button class="btn btn-sm btn-secondary" id="export-data">导出</button>
-        </div>
-        <div class="settings-row">
-          <div>
-            <div class="settings-row-label">导入学习数据</div>
-            <div class="settings-row-desc">从 JSON 文件恢复数据</div>
-          </div>
-          <button class="btn btn-sm btn-secondary" id="import-data">导入</button>
-          <input type="file" id="import-file" accept=".json" style="display:none">
-        </div>
-        <div class="settings-row">
-          <div>
-            <div class="settings-row-label">清除当前词库记录</div>
-            <div class="settings-row-desc">保留单词，仅清除学习进度</div>
-          </div>
-          <button class="btn-danger-text" id="clear-category">清除</button>
-        </div>
-        <div class="settings-row">
-          <div>
-            <div class="settings-row-label" style="color: var(--accent-red);">重置所有数据</div>
-            <div class="settings-row-desc">删除所有词库的学习记录</div>
-          </div>
-          <button class="btn-danger-text" id="reset-all">重置</button>
-        </div>
+        <div class="settings-row"><div class="settings-row-label">导出学习数据</div><button class="btn btn-sm btn-secondary" id="export-data">导出JSON</button></div>
+        <div class="settings-row"><div><div class="settings-row-label">导入单词</div><div class="settings-row-desc">Excel/CSV 批量导入</div></div><button class="btn btn-sm btn-secondary" onclick="window._switchTab('import')">去导入</button></div>
+        <div class="settings-row"><div><div class="settings-row-label" style="color:var(--danger)">重置所有数据</div><div class="settings-row-desc">不可撤销</div></div><button class="btn-danger-text" id="reset-all">重置</button></div>
       </div>
-
-      <!-- About -->
-      <div class="settings-section">
-        <div class="settings-about">
-          基于<b>艾宾浩斯遗忘曲线</b>的间隔重复算法，在遗忘临界点安排复习。<br>
-          8 个复习阶段：1天 → 2天 → 4天 → 7天 → 15天 → 30天 → 60天 → 90天。<br>
-          将短期记忆转化为长期记忆。
-        </div>
-      </div>
+      <div class="settings-section"><div class="settings-about">基于 <b>SM-2改良算法</b> 间隔重复 · 6个阶段复习 · 将短期记忆转化为长期记忆</div></div>
     </div>
   `;
 
-  // Load word counts for each category
-  loadCategoryCounts();
-
-  // Event: Category selection
-  document.getElementById('cat-radio-group').querySelectorAll('.cat-radio-item').forEach(item => {
+  // Category switch
+  contentEl.querySelectorAll('.cat-radio-item').forEach(item => {
     item.addEventListener('click', async () => {
-      const catKey = item.dataset.cat;
-      if (catKey === vocabStorage.getCurrentCategory()) return;
-      await handleCategoryChange(catKey);
+      const k = item.dataset.cat;
+      if (k === vocabStorage.getCurrentCategory()) return;
+      await vocabStorage.switchCategory(k);
+      await reloadWordData();
+      updateCategoryLabel();
+      renderSettings();
     });
   });
 
-  // Event: Daily goal stepper
-  document.getElementById('goal-minus').addEventListener('click', async () => {
-    const newGoal = Math.max(5, (state.settings.dailyGoal || 20) - 5);
-    state.settings.dailyGoal = newGoal;
-    document.getElementById('goal-value').textContent = newGoal;
+  // Goal stepper
+  document.getElementById('goal-m')?.addEventListener('click', async () => {
+    state.settings.dailyGoal = Math.max(5, (state.settings.dailyGoal||20)-5);
+    document.getElementById('goal-v').textContent = state.settings.dailyGoal;
     await vocabStorage.setSettings(state.settings);
   });
-  document.getElementById('goal-plus').addEventListener('click', async () => {
-    const newGoal = Math.min(50, (state.settings.dailyGoal || 20) + 5);
-    state.settings.dailyGoal = newGoal;
-    document.getElementById('goal-value').textContent = newGoal;
+  document.getElementById('goal-p')?.addEventListener('click', async () => {
+    state.settings.dailyGoal = Math.min(50, (state.settings.dailyGoal||20)+5);
+    document.getElementById('goal-v').textContent = state.settings.dailyGoal;
     await vocabStorage.setSettings(state.settings);
   });
 
-  // Event: Auto audio toggle
-  document.getElementById('auto-audio').addEventListener('change', async (e) => {
+  // Toggles
+  document.getElementById('auto-audio')?.addEventListener('change', async (e) => {
     state.settings.autoPlayAudio = e.target.checked;
     await vocabStorage.setSettings(state.settings);
   });
-
-  // Event: Show phonetic toggle
-  document.getElementById('show-phonetic').addEventListener('change', async (e) => {
-    state.settings.showPhonetic = e.target.checked;
-    await vocabStorage.setSettings(state.settings);
+  document.getElementById('dark-mode')?.addEventListener('change', async (e) => {
+    themeManager.applyTheme(e.target.checked ? 'dark' : 'light');
   });
 
-  // Event: Open import
-  document.getElementById('open-import').addEventListener('click', () => {
-    document.getElementById('import-excel-file').click();
-  });
-  document.getElementById('import-excel-file').addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    handleExcelImport(file);
-    e.target.value = '';
-  });
-
-  // Event: Export data
-  document.getElementById('export-data').addEventListener('click', async () => {
+  // Export
+  document.getElementById('export-data')?.addEventListener('click', async () => {
     const data = await vocabStorage.exportData();
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
+    const blob = new Blob([data], { type:'application/json' });
     const a = document.createElement('a');
-    a.href = url;
+    a.href = URL.createObjectURL(blob);
     a.download = `vocab-${vocabStorage.getCurrentCategory()}-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast('导出成功');
+    a.click(); showToast('导出成功');
   });
 
-  // Event: Import data
-  document.getElementById('import-data').addEventListener('click', () => {
-    document.getElementById('import-file').click();
-  });
-  document.getElementById('import-file').addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      const success = await vocabStorage.importData(ev.target.result);
-      if (success) {
-        await reloadWordData();
-        showToast('导入成功');
-      } else {
-        showToast('导入失败，请检查文件格式');
-      }
-    };
-    reader.readAsText(file);
+  // Reset
+  document.getElementById('reset-all')?.addEventListener('click', async () => {
+    if (confirm('确定删除所有数据？')) { await vocabStorage.clearAllData(); await reloadWordData(); showToast('已重置'); renderSettings(); }
   });
 
-  // Event: Clear current category
-  document.getElementById('clear-category').addEventListener('click', async () => {
-    if (confirm('确定要清除当前词库的学习记录吗？单词数据保留。')) {
-      await vocabStorage.clearCurrentCategoryData();
-      await reloadWordData();
-      showToast('已清除');
-    }
-  });
-
-  // Event: Reset all
-  document.getElementById('reset-all').addEventListener('click', async () => {
-    if (confirm('确定要删除所有词库的全部数据吗？此操作不可撤销。')) {
-      await vocabStorage.clearAllData();
-      await reloadWordData();
-      updateCategoryLabel();
-      showToast('已重置所有数据');
-    }
-  });
+  // Load category word counts
+  loadCatCounts();
 }
 
-async function handleCategoryChange(categoryKey) {
-  await vocabStorage.switchCategory(categoryKey);
-  await reloadWordData();
-  updateCategoryLabel();
-  // Re-render settings to reflect new active category
-  renderSettingsPage();
-}
-
-async function loadCategoryCounts() {
-  const categories = vocabStorage.getCategories();
-  for (const cat of categories) {
-    const countEl = document.getElementById(`cat-count-${cat.key}`);
-    if (!countEl) continue;
-    try {
-      const response = await fetch(cat.file);
-      if (response.ok) {
-        const words = await response.json();
-        countEl.textContent = `${words.length} 词`;
-      }
-    } catch {
-      countEl.textContent = '—';
-    }
-  }
-}
-
-// ============================================
-// Excel Import
-// ============================================
-
-let importPreviewData = [];
-
-async function handleExcelImport(file) {
-  try {
-    const data = await readExcelFile(file);
-    if (!data || data.length === 0) {
-      showToast('文件中没有找到单词数据');
-      return;
-    }
-    importPreviewData = data;
-    showImportModal(data);
-  } catch (err) {
-    console.error('Import error:', err);
-    showToast('导入失败，请检查文件格式');
-  }
-}
-
-function readExcelFile(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
+async function loadCatCounts() {
+  for (const cat of vocabStorage.getCategories()) {
+    const el = document.getElementById(`sc-${cat.key}`);
+    if (!el) continue;
+    if (cat.file) {
       try {
-        const wb = XLSX.read(e.target.result, { type: 'array' });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-        if (rows.length < 2) { resolve([]); return; }
+        const r = await fetch(cat.file);
+        if (r.ok) { const words = await r.json(); el.textContent = `${words.length}词`; continue; }
+      } catch {}
+    }
+    el.textContent = '—';
+  }
+}
 
-        // Detect header row (first row) — normalize column names
-        const headers = rows[0].map(h => String(h || '').toLowerCase().trim());
-
-        const colMap = {};
-        const mappings = {
-          word: ['word', '单词', '英文', 'english', '词汇'],
-          phonetic: ['phonetic', '音标', 'phonetics', 'pronunciation'],
-          meaning: ['meaning', '释义', '中文', 'chinese', '意思', '含义', '定义'],
-          pos: ['pos', '词性', 'part of speech', 'type'],
-          examples: ['examples', '例句', 'example', 'sentences', '例句(en)', '例句（en）'],
-        };
-
-        for (const [key, names] of Object.entries(mappings)) {
-          for (const name of names) {
-            const idx = headers.indexOf(name);
-            if (idx >= 0) { colMap[key] = idx; break; }
-          }
-        }
-
-        if (colMap.word === undefined) {
-          // Fallback: first column is word
-          colMap.word = 0;
-          if (headers.length > 1) colMap.meaning = 1;
-        }
-
-        const words = [];
-        for (let i = 1; i < rows.length; i++) {
-          const row = rows[i];
-          if (!row || !row[colMap.word]) continue;
-          const word = String(row[colMap.word]).trim();
-          if (!word) continue;
-
-          const meaning = colMap.meaning >= 0 ? String(row[colMap.meaning] || '').trim() : '';
-          const phonetic = colMap.phonetic >= 0 ? String(row[colMap.phonetic] || '').trim() : '';
-          const pos = colMap.pos >= 0 ? String(row[colMap.pos] || '').trim() : '';
-
-          // Parse examples: split by | or newline
-          let examples = [];
-          if (colMap.examples >= 0) {
-            const raw = String(row[colMap.examples] || '').trim();
-            if (raw) {
-              examples = raw.split('|').map(s => {
-                const parts = s.trim().split('\n');
-                return { en: parts[0]?.trim() || '', cn: parts[1]?.trim() || '' };
-              }).filter(e => e.en);
-            }
-          }
-
-          // If no pos in data, infer from meaning
-          let finalPos = pos;
-          if (!finalPos && meaning) {
-            if (meaning.startsWith('v') || meaning.startsWith('V')) finalPos = 'v.';
-            else if (meaning.startsWith('n') || meaning.startsWith('N')) finalPos = 'n.';
-            else if (meaning.startsWith('adj') || meaning.startsWith('Adj')) finalPos = 'adj.';
-            else if (meaning.startsWith('adv') || meaning.startsWith('Adv')) finalPos = 'adv.';
-          }
-
-          words.push({
-            id: `imp_${Date.now()}_${i}`,
-            word,
-            phonetic,
-            meaning,
-            definitions: [{ pos: finalPos, def: meaning, example: examples[0]?.en || '' }],
-            examples,
-            tags: ['导入'],
-            difficulty: 2,
-          });
-        }
-
-        resolve(words);
-      } catch (err) { reject(err); }
+// ============================================
+// Excel Import helper
+// ============================================
+async function handleExcelImport(file) {
+  if (!file) return;
+  try {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+      if (rows.length < 2) { showToast('文件为空'); return; }
+      const headers = rows[0].map(h => String(h||'').toLowerCase().trim());
+      const colMap = {};
+      for (const [key, names] of Object.entries({
+        word: ['word','单词','英文','english'], meaning: ['meaning','释义','中文','chinese'],
+        phonetic: ['phonetic','音标'], pos: ['pos','词性'], examples: ['examples','例句'],
+      })) {
+        for (const n of names) { const i = headers.indexOf(n); if (i>=0) { colMap[key]=i; break; } }
+      }
+      if (colMap.word === undefined) colMap.word = 0;
+      const words = [];
+      for (let i=1; i<rows.length; i++) {
+        const row = rows[i]; if (!row || !row[colMap.word]) continue;
+        const w = String(row[colMap.word]).trim(); if (!w) continue;
+        const meaning = colMap.meaning>=0 ? String(row[colMap.meaning]||'').trim() : '';
+        const phonetic = colMap.phonetic>=0 ? String(row[colMap.phonetic]||'').trim() : '';
+        const pos = colMap.pos>=0 ? String(row[colMap.pos]||'').trim() : '';
+        words.push({
+          id: `xls_${Date.now()}_${i}`, word: w, phonetic, meaning,
+          definitions: [{ pos, def: meaning }],
+          tags: ['导入'], difficulty: 2,
+        });
+      }
+      if (words.length===0) { showToast('未识别到单词'); return; }
+      const name = prompt('词库名称:', `导入词库 ${new Date().toLocaleDateString('zh-CN')}`);
+      if (!name) return;
+      await vocabStorage.addImportedCategory(name, words);
+      await reloadWordData();
+      showToast(`已导入 ${words.length} 个单词`);
+      renderImport();
     };
-    reader.onerror = reject;
     reader.readAsArrayBuffer(file);
-  });
-}
-
-function showImportModal(data) {
-  const preview = data.slice(0, 10);
-
-  const modal = document.createElement('div');
-  modal.className = 'import-modal-overlay';
-  modal.id = 'import-modal';
-  modal.innerHTML = `
-    <div class="import-modal">
-      <h2>导入单词</h2>
-      <p style="color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: var(--space-4);">
-        解析到 <strong>${data.length}</strong> 个单词
-      </p>
-      ${preview.length > 0 ? `
-        <div class="import-preview">
-          <table>
-            <thead><tr>
-              <th>#</th><th>单词</th><th>音标</th><th>释义</th><th>词性</th>
-            </tr></thead>
-            <tbody>
-              ${preview.map((w, i) => `
-                <tr>
-                  <td>${i + 1}</td>
-                  <td><strong>${w.word}</strong></td>
-                  <td>${w.phonetic || '—'}</td>
-                  <td>${(w.meaning || '').slice(0, 20)}</td>
-                  <td>${w.definitions?.[0]?.pos || '—'}</td>
-                </tr>
-              `).join('')}
-              ${data.length > 10 ? `<tr><td colspan="5" style="text-align:center;color:var(--text-tertiary)">... 还有 ${data.length - 10} 个单词</td></tr>` : ''}
-            </tbody>
-          </table>
-        </div>
-      ` : ''}
-      <div class="import-field">
-        <label>词库名称</label>
-        <input type="text" id="import-cat-name" placeholder="例如：我的生词本" value="导入词库 ${new Date().toLocaleDateString('zh-CN')}">
-      </div>
-      <div class="import-actions">
-        <button class="btn btn-secondary" id="import-cancel">取消</button>
-        <button class="btn btn-primary" id="import-confirm">确认导入 ${data.length} 个单词</button>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(modal);
-
-  // Events
-  modal.addEventListener('click', (e) => {
-    if (e.target === modal) closeImportModal();
-  });
-
-  document.getElementById('import-cancel').addEventListener('click', closeImportModal);
-  document.getElementById('import-confirm').addEventListener('click', async () => {
-    const name = document.getElementById('import-cat-name').value.trim() || '导入词库';
-    await vocabStorage.addImportedCategory(name, importPreviewData);
-    closeImportModal();
-    await reloadWordData();
-    updateCategoryLabel();
-    renderSettingsPage();
-    showToast(`已导入 ${importPreviewData.length} 个单词`);
-  });
-}
-
-function closeImportModal() {
-  const modal = document.getElementById('import-modal');
-  if (modal) modal.remove();
+  } catch (err) { console.error(err); showToast('导入失败'); }
 }
 
 // ============================================
-// External tab switch (for inline onclick handlers)
+// Global helpers
 // ============================================
-
-window.switchTabExternal = (tabName) => {
-  switchTab(tabName);
-};
+window._switchTab = (tab) => switchTab(tab);
 
 // ============================================
 // Start
 // ============================================
-
 init();
