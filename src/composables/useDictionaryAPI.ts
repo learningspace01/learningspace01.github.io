@@ -163,56 +163,58 @@ export function useDictionaryAPI() {
     loading.value = true
     error.value = null
 
-    // Fetch from both APIs in parallel
-    const [shanbay, freeDict] = await Promise.all([
-      lookupShanbay(word),
-      lookupFreeDict(word),
-    ])
+    const wordClean = word.trim()
+    const difficulty = estimateDifficulty(wordClean)
+
+    // 1. Try Shanbay first for Chinese definition
+    const shanbay = await lookupShanbay(wordClean)
+    let phonetic = ''
+    let partOfSpeech: string[] = []
+    let definitions: Definition[] = []
+    let examples: Example[] = []
+    let synonyms: string[] = []
+    const definitionsCn = shanbay?.definition || ''
+
+    if (shanbay?.cnDef) {
+      // Shanbay succeeded — use Chinese definition as primary
+      definitions.push({ pos: shanbay.cnPos || '中译', meaning: shanbay.cnDef })
+    }
+
+    // 2. Supplement with Free Dictionary for phonetics / examples / synonyms
+    const freeDict = await lookupFreeDict(wordClean)
+    if (freeDict) {
+      const parsed = parseFreeDict(freeDict, wordClean)
+      phonetic = parsed.phonetic
+      partOfSpeech = parsed.partOfSpeech
+      examples = parsed.examples
+      synonyms = parsed.synonyms
+
+      // If Shanbay failed, use English definitions as fallback
+      if (!shanbay && parsed.definitions.length) {
+        definitions = parsed.definitions
+      }
+    }
 
     loading.value = false
 
     if (!shanbay && !freeDict) {
-      error.value = `未找到「${word.trim()}」的释义`
+      error.value = `未找到「${wordClean}」的释义`
       return null
     }
 
-    const wordClean = word.trim()
-    const difficulty = estimateDifficulty(wordClean)
-    const parsed = freeDict ? parseFreeDict(freeDict, wordClean) : {
-      partOfSpeech: [] as string[],
-      definitions: [] as Definition[],
-      examples: [] as Example[],
-      synonyms: [] as string[],
-      antonyms: [] as string[],
-      phonetic: '',
-    }
-
-    // Build definitionsCn from Shanbay
-    const definitionsCn = shanbay?.definition || ''
-
-    // Build merged definitions: Chinese first, then English
-    const mergedDefinitions: Definition[] = []
-    if (shanbay?.cnDef) {
-      mergedDefinitions.push({ pos: shanbay.cnPos || '中译', meaning: shanbay.cnDef })
-    }
-    mergedDefinitions.push(...parsed.definitions)
-
-    // Build tags
-    const tags = generateTags(parsed.partOfSpeech, difficulty)
-
     return {
       word: wordClean,
-      phonetic: parsed.phonetic,
-      partOfSpeech: parsed.partOfSpeech,
-      definitions: mergedDefinitions,
+      phonetic,
+      partOfSpeech,
+      definitions,
       definitionsCn,
-      examples: parsed.examples,
-      synonyms: parsed.synonyms,
+      examples,
+      synonyms,
       relatedWords: [],
       phrases: [],
       wordForms: [],
       examTypes: [],
-      tags,
+      tags: generateTags(partOfSpeech, difficulty),
       difficulty,
     }
   }
