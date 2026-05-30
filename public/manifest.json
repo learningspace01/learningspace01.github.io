@@ -1,0 +1,17 @@
+{
+  "name": "VocabMaster - 英语生词训练",
+  "short_name": "VocabMaster",
+  "description": "精致的英语单词学习与复习工具",
+  "start_url": "/003生词训练本/vocab",
+  "display": "standalone",
+  "background_color": "#FAFBFC",
+  "theme_color": "#4F6EF7",
+  "icons": [
+    {
+      "src": "/003生词训练本/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
