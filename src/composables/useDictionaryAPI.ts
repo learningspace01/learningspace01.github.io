@@ -63,8 +63,9 @@ interface ShanbayResult {
 
 async function lookupShanbay(word: string): Promise<ShanbayResult | null> {
   try {
+    const targetUrl = `https://api.shanbay.com/bdc/search/?word=${encodeURIComponent(word.trim())}`
     const resp = await fetch(
-      `https://api.shanbay.com/bdc/search/?word=${encodeURIComponent(word.trim())}`
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`
     )
     if (!resp.ok) return null
     const json = await resp.json()
