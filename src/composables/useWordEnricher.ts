@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { useYoudaoAPI } from './useYoudaoAPI'
+import { useDictionaryAPI } from './useDictionaryAPI'
 import type { Definition, Example } from '@/types/vocab'
 
 export interface EnrichedWordData {
@@ -20,7 +20,7 @@ const loading = ref(false)
 const progress = ref({ current: 0, total: 0, word: '' })
 
 export function useWordEnricher() {
-  const { lookup } = useYoudaoAPI()
+  const { lookup } = useDictionaryAPI()
 
   function estimateDifficulty(word: string): number {
     const len = word.trim().length

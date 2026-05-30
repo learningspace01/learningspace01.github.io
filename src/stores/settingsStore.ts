@@ -15,7 +15,6 @@ const DEFAULT_SETTINGS: Settings = {
   notificationReminder: '09:00',
   theme: 'default',
   dataExportFormat: 'json',
-  youdaoProxyUrl: '',
   enabledBookIds: [],
 }
 

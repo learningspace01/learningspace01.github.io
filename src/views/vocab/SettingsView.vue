@@ -457,24 +457,6 @@ function resetAllData() {
     </GlassCard>
 
     <GlassCard padding="var(--space-6)" class="section-card">
-      <h3 class="section-title">有道词典代理</h3>
-      <p class="setting-desc">
-        有道词典 API 不支持浏览器直接调用（无 CORS 头），需配置代理地址。
-        开发环境下默认使用 Vite 代理。生产环境建议使用 Cloudflare Worker 等免费代理。
-      </p>
-      <div class="form-row">
-        <div class="form-group">
-          <label>代理地址</label>
-          <input
-            type="text"
-            v-model="settingsStore.settings.youdaoProxyUrl"
-            placeholder="例如: https://youdao-proxy.yourname.workers.dev"
-          />
-        </div>
-      </div>
-    </GlassCard>
-
-    <GlassCard padding="var(--space-6)" class="section-card">
       <h3 class="section-title">关于</h3>
       <div class="about-info">
         <p>VocabMaster v1.0 — Phase 6</p>

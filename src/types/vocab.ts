@@ -92,6 +92,5 @@ export interface Settings {
   notificationReminder: string | null
   theme: string
   dataExportFormat: 'json' | 'csv'
-  youdaoProxyUrl: string
   enabledBookIds: string[]
 }
