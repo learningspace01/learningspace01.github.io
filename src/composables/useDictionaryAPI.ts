@@ -54,43 +54,69 @@ function normalizePos(pos: string): string {
   return map[pos.toLowerCase()] || pos.toLowerCase().replace(/[^a-z]/g, '')
 }
 
-export function useDictionaryAPI() {
-  async function lookup(word: string): Promise<DictResult | null> {
-    if (!word.trim()) return null
-    loading.value = true
-    error.value = null
-
-    try {
-      const resp = await fetch(
-        `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word.trim())}`
-      )
-      if (!resp.ok) {
-        if (resp.status === 404) {
-          error.value = `未找到「${word.trim()}」的释义`
-        }
-        loading.value = false
-        return null
-      }
-      const data = await resp.json()
-      loading.value = false
-      return parseResponse(data[0], word.trim())
-    } catch {
-      error.value = '词典服务暂不可用'
-      loading.value = false
-      return null
-    }
-  }
-
-  return { lookup, loading, error }
+// ---- Shanbay API ----
+interface ShanbayResult {
+  definition: string       // e.g. "int. 你好；喂"
+  cnDef: string            // pure Chinese definition
+  cnPos: string            // Chinese part of speech
 }
 
-function parseResponse(data: Record<string, unknown>, word: string): DictResult {
-  // Phonetic — prefer first text phonetics
-  const phonetics = (data.phonetics as Record<string, unknown>[]) || []
-  const phonetic = phonetics.find((p) => p.text)?.text as string || (data.phonetic as string) || ''
+async function lookupShanbay(word: string): Promise<ShanbayResult | null> {
+  try {
+    const resp = await fetch(
+      `https://api.shanbay.com/bdc/search/?word=${encodeURIComponent(word.trim())}`
+    )
+    if (!resp.ok) return null
+    const json = await resp.json()
+    if (json.status_code !== 0 || !json.data) return null
 
-  // Meanings
-  const meanings = (data.meanings as Record<string, unknown>[]) || []
+    const data = json.data
+    const cnDef = data.cn_definition?.defn || ''
+    const cnPos = data.cn_definition?.pos || ''
+    const definition: string = data.definition || cnDef
+
+    return { definition, cnDef, cnPos }
+  } catch {
+    return null
+  }
+}
+
+// ---- Free Dictionary API ----
+interface FreeDictEntry {
+  word?: string
+  phonetic?: string
+  phonetics?: { text?: string; audio?: string }[]
+  meanings?: {
+    partOfSpeech?: string
+    definitions?: {
+      definition?: string
+      example?: string
+      synonyms?: string[]
+      antonyms?: string[]
+    }[]
+    synonyms?: string[]
+    antonyms?: string[]
+  }[]
+}
+
+async function lookupFreeDict(word: string): Promise<FreeDictEntry | null> {
+  try {
+    const resp = await fetch(
+      `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word.trim())}`
+    )
+    if (!resp.ok) return null
+    const data = await resp.json()
+    return data[0] || null
+  } catch {
+    return null
+  }
+}
+
+function parseFreeDict(data: FreeDictEntry, word: string) {
+  const phonetics = data.phonetics || []
+  const phonetic = phonetics.find((p) => p.text)?.text || data.phonetic || ''
+
+  const meanings = data.meanings || []
   const partOfSpeech: string[] = []
   const definitions: Definition[] = []
   const examples: Example[] = []
@@ -98,56 +124,98 @@ function parseResponse(data: Record<string, unknown>, word: string): DictResult 
   let allAntonyms: string[] = []
 
   for (const m of meanings) {
-    const pos = normalizePos(m.partOfSpeech as string)
+    const pos = normalizePos(m.partOfSpeech || '')
     if (pos && !partOfSpeech.includes(pos)) partOfSpeech.push(pos)
 
-    const defs = (m.definitions as Record<string, unknown>[]) || []
+    const defs = m.definitions || []
     for (const d of defs) {
-      // Definition
-      const defText = (d.definition as string || '').trim()
+      const defText = (d.definition || '').trim()
       if (defText) {
         definitions.push({ pos, meaning: defText })
       }
 
-      // Example
-      const exText = (d.example as string || '').trim()
+      const exText = (d.example || '').trim()
       if (exText && examples.length < 5) {
         examples.push({ en: exText, cn: '' })
       }
 
-      // Per-definition synonyms
-      const defSyns = (d.synonyms as string[]) || []
-      const defAnts = (d.antonyms as string[]) || []
-      allSynonyms = [...allSynonyms, ...defSyns]
-      allAntonyms = [...allAntonyms, ...defAnts]
+      allSynonyms = [...allSynonyms, ...(d.synonyms || [])]
+      allAntonyms = [...allAntonyms, ...(d.antonyms || [])]
     }
 
-    // Per-meaning synonyms/antonyms
-    const mSyns = (m.synonyms as string[]) || []
-    const mAnts = (m.antonyms as string[]) || []
-    allSynonyms = [...allSynonyms, ...mSyns]
-    allAntonyms = [...allAntonyms, ...mAnts]
+    allSynonyms = [...allSynonyms, ...(m.synonyms || [])]
+    allAntonyms = [...allAntonyms, ...(m.antonyms || [])]
   }
-
-  allSynonyms = [...new Set(allSynonyms)].slice(0, 12)
-  allAntonyms = [...new Set(allAntonyms)].slice(0, 12)
-
-  const difficulty = estimateDifficulty(word)
-  const tags = generateTags(partOfSpeech, difficulty)
 
   return {
-    word,
-    phonetic,
     partOfSpeech,
     definitions,
-    definitionsCn: '',
     examples,
-    synonyms: allSynonyms,
-    relatedWords: [],
-    phrases: [],
-    wordForms: [],
-    examTypes: [],
-    tags,
-    difficulty,
+    synonyms: [...new Set(allSynonyms)].slice(0, 12),
+    antonyms: [...new Set(allAntonyms)].slice(0, 12),
+    phonetic,
   }
+}
+
+export function useDictionaryAPI() {
+  async function lookup(word: string): Promise<DictResult | null> {
+    if (!word.trim()) return null
+    loading.value = true
+    error.value = null
+
+    // Fetch from both APIs in parallel
+    const [shanbay, freeDict] = await Promise.all([
+      lookupShanbay(word),
+      lookupFreeDict(word),
+    ])
+
+    loading.value = false
+
+    if (!shanbay && !freeDict) {
+      error.value = `未找到「${word.trim()}」的释义`
+      return null
+    }
+
+    const wordClean = word.trim()
+    const difficulty = estimateDifficulty(wordClean)
+    const parsed = freeDict ? parseFreeDict(freeDict, wordClean) : {
+      partOfSpeech: [] as string[],
+      definitions: [] as Definition[],
+      examples: [] as Example[],
+      synonyms: [] as string[],
+      antonyms: [] as string[],
+      phonetic: '',
+    }
+
+    // Build definitionsCn from Shanbay
+    const definitionsCn = shanbay?.definition || ''
+
+    // Build merged definitions: Chinese first, then English
+    const mergedDefinitions: Definition[] = []
+    if (shanbay?.cnDef) {
+      mergedDefinitions.push({ pos: shanbay.cnPos || '中译', meaning: shanbay.cnDef })
+    }
+    mergedDefinitions.push(...parsed.definitions)
+
+    // Build tags
+    const tags = generateTags(parsed.partOfSpeech, difficulty)
+
+    return {
+      word: wordClean,
+      phonetic: parsed.phonetic,
+      partOfSpeech: parsed.partOfSpeech,
+      definitions: mergedDefinitions,
+      definitionsCn,
+      examples: parsed.examples,
+      synonyms: parsed.synonyms,
+      relatedWords: [],
+      phrases: [],
+      wordForms: [],
+      examTypes: [],
+      tags,
+      difficulty,
+    }
+  }
+
+  return { lookup, loading, error }
 }
