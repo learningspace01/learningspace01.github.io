@@ -2,27 +2,29 @@
  * Youdao Dictionary JSON API Integration
  *
  * CORS NOTE: dict.youdao.com does not set CORS headers, so browser direct
- * calls fail in production. Two solutions:
+ * calls fail in production. Three solutions:
  *
  * 1. Development: Vite dev server proxies /youdao-api -> http://dict.youdao.com
  *    (configured in vite.config.ts, works automatically with `npm run dev`)
  *
- * 2. Production: Configure a proxy via Settings > youdaoProxyUrl.
+ * 2. Production (built-in fallback): Uses api.allorigins.win as a CORS proxy
+ *    automatically — no setup needed.
+ *
+ * 3. Production (custom proxy): Configure a proxy via Settings > youdaoProxyUrl.
  *    Recommended: Deploy a free Cloudflare Worker:
  *
  *      export default {
  *        async fetch(request) {
  *          const url = new URL(request.url)
- *          const word = url.searchParams.get('q') || ''
- *          const target = `http://dict.youdao.com/jsonapi?jsonversion=2&client=mobile&q=${encodeURIComponent(word)}`
- *          const resp = await fetch(target)
+ *          const target = url.searchParams.get('url') || ''
+ *          const resp = await fetch(decodeURIComponent(target))
  *          return new Response(await resp.text(), {
  *            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
  *          })
  *        }
  *      }
  *
- *    Then set youdaoProxyUrl to "https://your-worker.workers.dev" in Settings.
+ *    Then set youdaoProxyUrl to "https://your-worker.workers.dev/?url=" in Settings.
  */
 import { ref } from 'vue'
 import { useSettingsStore } from '@/stores/settingsStore'
@@ -58,26 +60,28 @@ function cleanHtml(text: string): string {
 }
 
 export function useYoudaoAPI() {
-  function getProxyBaseUrl(): string {
-    if (import.meta.env.DEV) return '/youdao-api'
-    const settingsStore = useSettingsStore()
-    return settingsStore.settings.youdaoProxyUrl || ''
-  }
-
   async function lookup(word: string): Promise<YoudaoResult | null> {
     if (!word.trim()) return null
     loading.value = true
     error.value = null
 
-    const base = getProxyBaseUrl()
-    if (!base) {
-      error.value = '请先在设置中配置有道词典代理地址'
-      loading.value = false
-      return null
+    const targetUrl = `http://dict.youdao.com/jsonapi?jsonversion=2&client=mobile&q=${encodeURIComponent(word.trim())}`
+
+    let url: string
+    if (import.meta.env.DEV) {
+      url = `/youdao-api/jsonapi?jsonversion=2&client=mobile&q=${encodeURIComponent(word.trim())}`
+    } else {
+      const proxy = useSettingsStore().settings.youdaoProxyUrl
+      if (proxy) {
+        // User-configured custom proxy (e.g. Cloudflare Worker)
+        url = `${proxy}${encodeURIComponent(targetUrl)}`
+      } else {
+        // Built-in fallback CORS proxy (no account needed)
+        url = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`
+      }
     }
 
     try {
-      const url = `${base}/jsonapi?jsonversion=2&client=mobile&q=${encodeURIComponent(word.trim())}`
       const resp = await fetch(url)
       if (!resp.ok) {
         loading.value = false
