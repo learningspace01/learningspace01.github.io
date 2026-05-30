@@ -54,32 +54,53 @@ function normalizePos(pos: string): string {
   return map[pos.toLowerCase()] || pos.toLowerCase().replace(/[^a-z]/g, '')
 }
 
-// ---- Shanbay API ----
+// ---- Dictionary API helpers ----
+
 interface ShanbayResult {
-  definition: string       // e.g. "int. 你好；喂"
-  cnDef: string            // pure Chinese definition
-  cnPos: string            // Chinese part of speech
+  definition: string
+  cnDef: string
+  cnPos: string
 }
 
-async function lookupShanbay(word: string): Promise<ShanbayResult | null> {
+async function fetchJson(url: string): Promise<unknown | null> {
   try {
-    const targetUrl = `https://api.shanbay.com/bdc/search/?word=${encodeURIComponent(word.trim())}`
-    const resp = await fetch(
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`
-    )
+    const resp = await fetch(url)
     if (!resp.ok) return null
-    const json = await resp.json()
-    if (json.status_code !== 0 || !json.data) return null
-
-    const data = json.data
-    const cnDef = data.cn_definition?.defn || ''
-    const cnPos = data.cn_definition?.pos || ''
-    const definition: string = data.definition || cnDef
-
-    return { definition, cnDef, cnPos }
+    return await resp.json()
   } catch {
     return null
   }
+}
+
+async function lookupShanbay(word: string): Promise<ShanbayResult | null> {
+  const directUrl = `https://api.shanbay.com/bdc/search/?word=${encodeURIComponent(word.trim())}`
+
+  // 1. Try direct call (works if CORS allows)
+  const json = await fetchJson(directUrl)
+  if (json && (json as Record<string, unknown>).status_code === 0) {
+    const data = (json as Record<string, unknown>).data as Record<string, unknown>
+    if (data) {
+      const cnDef = ((data.cn_definition as Record<string, unknown>)?.defn as string) || ''
+      const cnPos = ((data.cn_definition as Record<string, unknown>)?.pos as string) || ''
+      const definition: string = (data.definition as string) || cnDef
+      if (definition) return { definition, cnDef, cnPos }
+    }
+  }
+
+  // 2. Fallback: via CORS proxy
+  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(directUrl)}`
+  const proxyJson = await fetchJson(proxyUrl)
+  if (proxyJson && (proxyJson as Record<string, unknown>).status_code === 0) {
+    const data = (proxyJson as Record<string, unknown>).data as Record<string, unknown>
+    if (data) {
+      const cnDef = ((data.cn_definition as Record<string, unknown>)?.defn as string) || ''
+      const cnPos = ((data.cn_definition as Record<string, unknown>)?.pos as string) || ''
+      const definition: string = (data.definition as string) || cnDef
+      if (definition) return { definition, cnDef, cnPos }
+    }
+  }
+
+  return null
 }
 
 // ---- Free Dictionary API ----
