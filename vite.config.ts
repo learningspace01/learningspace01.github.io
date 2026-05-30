@@ -4,7 +4,7 @@ import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig({
   plugins: [vue()],
-  base: '/003生词训练本/',
+  base: '/',
   build: {
     outDir: 'docs',
   },

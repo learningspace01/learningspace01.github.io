@@ -1,1 +1,0 @@
-import{v as f}from"./index-BsPDnCmC.js";let c=0;const t=f([]);function d(){function i(s,e,n="🎉",a="#4F6EF7",r=4e3){const u=c++;t.value.push({id:u,title:s,description:e,icon:n,color:a}),setTimeout(()=>o(u),r)}function o(s){t.value=t.value.filter(e=>e.id!==s)}return{toasts:t,show:i,dismiss:o}}export{d as u};
