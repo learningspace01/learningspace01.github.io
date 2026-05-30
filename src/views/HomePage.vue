@@ -2,7 +2,7 @@
 import { useRouter } from 'vue-router'
 import { useSettingsStore } from '@/stores/settingsStore'
 import GlassCard from '@/components/GlassCard.vue'
-import { BookOpen, Clock, FileText, Calculator, Search, Sun, Moon } from 'lucide-vue-next'
+import { BookOpen, Clock, FileText, Calculator, GraduationCap, Search, Sun, Moon } from 'lucide-vue-next'
 
 const router = useRouter()
 const settingsStore = useSettingsStore()
@@ -16,6 +16,15 @@ const tools = [
     color: '#4F6EF7',
     active: true,
     path: '/vocab',
+  },
+  {
+    id: 'classflow',
+    name: 'ClassFlow',
+    desc: '教务与学情追踪引擎 — 签到、作业、学生管理',
+    icon: GraduationCap,
+    color: '#10B981',
+    active: true,
+    path: '/classflow',
   },
   {
     id: 'todo',

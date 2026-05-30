@@ -63,12 +63,13 @@ onMounted(() => {
       <div class="nav-right">
         <button
           class="sync-indicator"
-          :class="{ connected: sync.connected.value, syncing: sync.syncing.value }"
-          :title="sync.connected.value ? (sync.syncing.value ? '同步中...' : '已同步到云端') : '未连接，点击设置'"
+          :class="{ connected: sync.connected.value && !sync.syncError.value, syncing: sync.syncing.value, error: sync.syncError.value }"
+          :title="sync.syncError.value ? sync.syncError.value : (sync.syncing.value ? '同步中...' : (sync.connected.value ? '已同步到云端' : '未连接，点击设置'))"
           @click="switchTab('settings')"
         >
-          <Cloud v-if="sync.connected.value && !sync.syncing.value" :size="14" />
+          <Cloud v-if="sync.connected.value && !sync.syncing.value && !sync.syncError.value" :size="14" />
           <CloudOff v-else-if="!sync.connected.value" :size="14" />
+          <span v-else-if="sync.syncError.value" style="color:var(--danger)">!</span>
           <span v-else class="sync-spinner" />
         </button>
         <span v-if="sync.userEmail.value" class="sync-email">{{ sync.userEmail.value }}</span>
@@ -219,6 +220,12 @@ onMounted(() => {
 
 .sync-indicator.syncing {
   color: var(--warning);
+}
+
+.sync-indicator.error {
+  color: var(--danger);
+  font-weight: 700;
+  font-size: 16px;
 }
 
 .sync-email {

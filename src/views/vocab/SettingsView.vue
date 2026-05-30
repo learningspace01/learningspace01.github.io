@@ -427,10 +427,19 @@ function resetAllData() {
           <p class="auth-email">已登录：{{ sync.userEmail.value }}</p>
           <p class="auth-sync-info">
             <span v-if="sync.syncing.value">同步中…</span>
-            <span v-else-if="sync.lastSyncAt.value">上次同步：{{ sync.lastSyncAt.value.slice(0, 16).replace('T', ' ') }}</span>
+            <span v-else-if="sync.lastSyncMessage.value">{{ sync.lastSyncMessage.value }}</span>
             <span v-else>已连接</span>
           </p>
-          <button class="action-btn secondary" @click="handleSignOut">退出登录</button>
+          <p v-if="sync.lastSyncAt.value && !sync.syncError.value" class="auth-sync-time">
+            上次同步：{{ sync.lastSyncAt.value.slice(0, 16).replace('T', ' ') }}
+          </p>
+          <p v-if="sync.syncError.value" class="sync-error-msg">{{ sync.syncError.value }}</p>
+          <div class="auth-actions">
+            <button class="action-btn primary" :disabled="sync.syncing.value" @click="sync.pushAll()">
+              {{ sync.syncing.value ? '同步中…' : '手动同步' }}
+            </button>
+            <button class="action-btn secondary" @click="handleSignOut">退出登录</button>
+          </div>
         </div>
       </template>
       <template v-else>
@@ -782,6 +791,21 @@ function resetAllData() {
   font-size: var(--text-xs);
   color: var(--text-tertiary);
   margin: 0;
+}
+.auth-sync-time {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin: 0;
+}
+.sync-error-msg {
+  font-size: var(--text-sm);
+  color: var(--danger);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  background: #FEF2F2;
+  border-radius: var(--radius-sm);
+  max-width: 100%;
+  word-break: break-all;
 }
 
 .data-actions {
