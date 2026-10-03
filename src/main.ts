@@ -14,8 +14,13 @@ app.use(createPinia())
 app.use(router)
 app.mount('#app')
 
-if ('serviceWorker' in navigator) {
+// The service worker caches the app shell and hashed assets; registering it in
+// dev would cache Vite's unbundled modules and fight HMR, so production only.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/003生词训练本/sw.js')
+    const scope = import.meta.env.BASE_URL
+    navigator.serviceWorker.register(`${scope}sw.js`, { scope }).catch((error) => {
+      console.error('Service worker registration failed:', error)
+    })
   })
 }
