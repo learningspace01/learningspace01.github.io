@@ -1,5 +1,5 @@
 // Bump CACHE_VERSION on every deploy that must invalidate cached assets.
-const CACHE_VERSION = 'v2'
+const CACHE_VERSION = 'v3'
 const CACHE_NAME = `learningspace-${CACHE_VERSION}`
 const APP_SHELL = ['/', '/favicon.svg', '/manifest.json']
 
@@ -42,13 +42,21 @@ self.addEventListener('fetch', (event) => {
   // App shell: network-first, so a new deploy is picked up on the next load.
   // The cached shell is only an offline fallback.
   if (request.mode === 'navigate') {
+    // Only the app root may overwrite the cached shell. Other same-origin
+    // navigations (e.g. the standalone /allinone/ page under public/) must not
+    // be cached as "/" or they would hijack the offline fallback.
+    const isAppShell = url.pathname === '/' || url.pathname === '/index.html'
     event.respondWith(
       fetch(request)
         .then((response) => {
-          putInCache(new Request('/'), response)
+          if (isAppShell) putInCache(new Request('/'), response)
           return response
         })
-        .catch(() => caches.match('/').then((cached) => cached || caches.match(request)))
+        .catch(() =>
+          (isAppShell ? caches.match('/') : caches.match(request)).then(
+            (cached) => cached || caches.match(request)
+          )
+        )
     )
     return
   }

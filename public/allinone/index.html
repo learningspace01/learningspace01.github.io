@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>All-In-One</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;1,8..60,400&family=Noto+Serif+SC:wght@300;400;600&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --white:#fff;--paper:#faf9f7;--ink:#111;--ink2:#333;--ink3:#666;--ink4:#999;
+  --rule:#d4cfc8;--rule2:#e8e4de;--accent:#c41230;--accent2:#0a3d7a;--gold:#b5872a;
+  --bg-light:#f5f2ed;--green:#1a6e2e;
+  --serif:'Playfair Display','Noto Serif SC',Georgia,serif;
+  --body:'Source Serif 4','Noto Serif SC',Georgia,serif;
+  --mono:'IBM Plex Mono',monospace;--cn:'Noto Serif SC',serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--white);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.7;}
+a{color:inherit;text-decoration:none;}
+.masthead{border-bottom:none;padding:10px 0 8px;text-align:center;background:var(--white);position:sticky;top:0;z-index:200;}
+.masthead-date{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink4);margin-bottom:3px;}
+.masthead-title{font-family:var(--serif);font-size:38px;font-weight:700;letter-spacing:-.03em;line-height:1;}
+.masthead-tagline{font-family:var(--body);font-style:italic;font-size:12px;color:var(--ink3);}
+.masthead hr{border:none;border-top:1px solid var(--ink);margin:6px 40px 0;}
+.mstrip{display:none;}
+.mstrip-label{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink4);padding:0 14px;border-right:1px solid var(--rule);height:100%;display:flex;align-items:center;white-space:nowrap;background:var(--bg-light);flex-shrink:0;}
+.mstrip-wrap{overflow:hidden;flex:1;}
+.mstrip-track{display:flex;animation:ticker 32s linear infinite;white-space:nowrap;}
+@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.mitem{font-family:var(--mono);font-size:10px;padding:0 18px;display:inline-flex;gap:6px;align-items:center;color:var(--ink3);}
+.mval{color:var(--ink);font-weight:500;}.up{color:var(--green);}.dn{color:var(--accent);}
+.navbar{border-bottom:1px solid var(--rule2);background:var(--white);position:sticky;top:82px;z-index:190;}
+.nav-inner{display:flex;align-items:center;justify-content:center;max-width:1240px;margin:0 auto;padding:0 24px;overflow-x:auto;}
+.nav-item{font-family:var(--mono);font-size:14px;letter-spacing:.08em;text-transform:uppercase;padding:11px 20px;color:var(--ink4);cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;white-space:nowrap;user-select:none;font-weight:600;}
+.nav-item:hover{color:var(--ink);}
+.nav-item.active{font-weight:700;}
+.nav-item[onclick*="'news'"].active    {color:#7a2828;border-bottom:2px solid #7a2828;}
+.nav-item[onclick*="'videos'"].active  {color:#1e3a52;border-bottom:2px solid #1e3a52;}
+.nav-item[onclick*="'reading'"].active {color:#2a4a35;border-bottom:2px solid #2a4a35;}
+.nav-item[onclick*="'opinions'"].active{color:#6b4f1e;border-bottom:2px solid #6b4f1e;}
+.nav-item[onclick*="'assets'"].active  {color:#2e3d4f;border-bottom:2px solid #2e3d4f;}
+.container{max-width:1240px;margin:0 auto;padding:0 24px;}
+.panel{display:none;}.panel.active{display:block;}
+.toolbar{display:flex;align-items:center;border-bottom:1px solid var(--rule2);padding:14px 0 0;margin-bottom:28px;overflow-x:auto;gap:0;}
+.tb-btn{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:6px 16px 10px;color:var(--ink4);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;white-space:nowrap;user-select:none;font-weight:500;}
+.tb-btn:hover{color:var(--ink2);}
+.tb-btn.active{font-weight:700;}
+#news-toolbar .tb-btn.active{color:#7a2828;border-bottom-color:#7a2828;}
+.vd-toolbar-wrap{display:flex;flex-direction:column;gap:0;border-bottom:1px solid var(--rule2);margin-bottom:28px;}
+.vd-toolbar-row{display:flex;align-items:center;padding:8px 0;overflow-x:auto;gap:0;flex-wrap:nowrap;}
+.vd-toolbar-row+.vd-toolbar-row{border-top:1px solid var(--rule2);}
+.vd-lang-label{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:4px 16px 4px 0;white-space:nowrap;flex-shrink:0;cursor:pointer;border-radius:2px;transition:all .15s;border:1px solid transparent;}
+.vd-lang-label.cn{color:#7a2828;}
+.vd-lang-label.cn:hover{background:#fdf5f5;}
+.vd-lang-label.cn.active{background:#fdf5f5;border-color:#e8b4b4;}
+.vd-lang-label.en{color:#2a4a35;}
+.vd-lang-label.en:hover{background:#f5fdf7;}
+.vd-lang-label.en.active{background:#f5fdf7;border-color:#b4d8bc;}
+.vd-tb-cn{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:4px 14px;color:var(--ink4);cursor:pointer;border-radius:2px;transition:all .15s;white-space:nowrap;user-select:none;font-weight:500;border:1px solid transparent;}
+.vd-tb-cn:hover{color:#7a2828;background:#fdf5f5;}
+.vd-tb-cn.active{color:#7a2828;background:#fdf5f5;border-color:#e8b4b4;font-weight:700;}
+.vd-tb-en{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:4px 14px;color:var(--ink4);cursor:pointer;border-radius:2px;transition:all .15s;white-space:nowrap;user-select:none;font-weight:500;border:1px solid transparent;}
+.vd-tb-en:hover{color:#2a4a35;background:#f5fdf7;}
+.vd-tb-en.active{color:#2a4a35;background:#f5fdf7;border-color:#b4d8bc;font-weight:700;}
+#rd-toolbar   .tb-btn.active{color:#2a4a35;border-bottom-color:#2a4a35;}
+#op-toolbar   .tb-btn.active{color:#6b4f1e;border-bottom-color:#6b4f1e;}
+
+/* ── 排序栏 ── */
+#vd-sort-bar{
+  display:none;
+  align-items:center;
+  gap:0;
+  border-bottom:1px solid var(--rule2);
+  margin-bottom:20px;
+}
+#vd-sort-bar .vd-sort-label{
+  font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink4);padding:0 16px 10px 0;flex-shrink:0;white-space:nowrap;
+}
+#vd-sort-bar .tb-btn{padding:6px 20px 10px;}
+#vd-sort-bar .tb-btn.active{color:#1e3a52;border-bottom-color:#1e3a52;}
+
+.news-grid{display:grid;grid-template-columns:2fr 1fr;gap:0;}
+.news-main{padding-right:32px;}
+.news-sidebar{border-left:1px solid var(--rule);padding-left:28px;}
+@media(max-width:860px){.news-grid{grid-template-columns:1fr}.news-main{padding-right:0}.news-sidebar{border-left:none;border-top:1px solid var(--rule);padding-left:0;padding-top:24px}}
+.secondary-story{display:flex;gap:0;border-bottom:1px solid var(--rule2);padding:13px 0;cursor:pointer;}
+.secondary-story:last-child{border-bottom:none;}
+.sec-num{font-family:var(--mono);font-size:22px;font-weight:300;color:var(--rule);min-width:36px;line-height:1;padding-top:2px;}
+.sec-content{flex:1;}
+.sec-headline{font-family:var(--serif);font-size:15px;font-weight:600;line-height:1.35;margin-bottom:4px;transition:color .15s;}
+.secondary-story:hover .sec-headline{color:var(--accent2);}
+.sec-meta{font-family:var(--mono);font-size:10px;color:var(--ink4);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.sidebar-heading{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink4);border-bottom:2px solid var(--ink);padding-bottom:6px;margin-bottom:14px;}
+.sidebar-section{margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--rule2);}
+.sidebar-section:last-child{border-bottom:none;}
+.sidebar-item{border-bottom:1px solid var(--rule2);padding:10px 0;cursor:pointer;}
+.sidebar-item:last-child{border-bottom:none;}
+.sidebar-hl{font-family:var(--serif);font-size:13px;font-weight:600;line-height:1.4;margin-bottom:3px;transition:color .15s;}
+.sidebar-item:hover .sidebar-hl{color:var(--accent2);}
+.sidebar-src{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.06em;}
+.translate-btn{font-family:var(--mono);font-size:9px;letter-spacing:.05em;text-transform:uppercase;padding:3px 9px;border:1px solid var(--rule);border-radius:2px;cursor:pointer;color:var(--ink3);background:var(--paper);transition:all .15s;display:inline-flex;align-items:center;gap:4px;}
+.translate-btn:hover{border-color:var(--accent2);color:var(--accent2);}
+@keyframes fadein{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.vd-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-bottom:40px;}
+@media(max-width:1100px){.vd-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:760px){.vd-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:480px){.vd-grid{grid-template-columns:1fr}}
+.vd-card{border:1px solid var(--rule2);border-radius:2px;overflow:hidden;background:var(--white);transition:box-shadow .2s,transform .2s;opacity:0;animation:slideup .4s ease forwards;}
+.vd-card:hover{box-shadow:0 4px 18px rgba(0,0,0,.1);transform:translateY(-2px);}
+.vd-thumb{width:100%;aspect-ratio:16/9;overflow:hidden;position:relative;background:#e8e4de;cursor:pointer;}
+.vd-thumb img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s;}
+.vd-thumb:hover img{transform:scale(1.04);}
+.vd-play-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0);transition:background .2s;}
+.vd-thumb:hover .vd-play-overlay{background:rgba(0,0,0,.35);}
+.vd-play{width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;opacity:0;transform:scale(.8);transition:opacity .2s,transform .2s;}
+.vd-thumb:hover .vd-play{opacity:1;transform:scale(1);}
+.vd-play svg{fill:#1a1a1a;width:14px;height:14px;margin-left:2px;}
+.vd-info{padding:12px 14px 14px;}
+.vd-ch{font-family:var(--mono);font-size:9px;color:var(--accent2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;}
+.vd-title{font-family:var(--serif);font-size:13px;font-weight:600;line-height:1.4;margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.vd-meta-row{display:flex;align-items:center;justify-content:space-between;gap:6px;font-family:var(--mono);font-size:9px;color:var(--ink4);}
+.vd-tx{cursor:pointer;padding:2px 6px;border:1px solid var(--rule2);border-radius:1px;transition:all .15s;background:var(--paper);}
+.vd-tx:hover{color:var(--accent2);border-color:var(--accent2);}
+.vd-cn-box{padding:8px 12px;background:var(--bg-light);border-left:2px solid var(--accent2);font-family:var(--cn);font-size:11px;color:var(--ink3);line-height:1.6;display:none;margin-top:8px;}
+.vd-cn-box.show{display:block;animation:fadein .3s ease;}
+.vd-skeleton{aspect-ratio:16/9;background:linear-gradient(90deg,#f0ede8 25%,#e8e4de 50%,#f0ede8 75%);background-size:200% 100%;animation:skeleton-shimmer 1.4s ease-in-out infinite;border-radius:2px;}
+.vd-skeleton-card{border:1px solid var(--rule2);border-radius:2px;overflow:hidden;}
+.vd-skeleton-body{padding:12px 14px;}
+.vd-skeleton-line{height:10px;background:#e8e4de;border-radius:2px;margin-bottom:8px;}
+@keyframes skeleton-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.vd-updated{font-family:var(--mono);font-size:10px;color:var(--ink4);font-style:italic;margin-bottom:16px;}
+.vd-modal{display:none;position:fixed;inset:0;z-index:9000;align-items:center;justify-content:center;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);}
+.vd-modal.open{display:flex;}
+.vd-modal-box{position:relative;width:min(860px,94vw);background:#111;border-radius:4px;overflow:hidden;}
+.vd-modal-close{position:absolute;top:10px;right:12px;background:none;border:none;color:#fff;font-size:18px;cursor:pointer;opacity:.75;z-index:2;line-height:1;}
+.vd-modal-close:hover{opacity:1;}
+.vd-modal-embed{aspect-ratio:16/9;width:100%;}
+.vd-modal-embed iframe{width:100%;height:100%;display:block;}
+.vd-modal-info{padding:14px 18px 16px;}
+.vd-modal-ch{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#888;margin-bottom:4px;}
+.vd-modal-title{font-family:var(--serif);font-size:15px;font-weight:600;color:#f0f0f0;line-height:1.4;margin:0;}
+.reading-layout{display:grid;grid-template-columns:2fr 1fr;gap:0;padding-top:28px;}
+.reading-main{padding-right:40px;}
+.reading-sidebar-col{border-left:1px solid var(--rule);padding-left:32px;}
+@media(max-width:860px){.reading-layout{grid-template-columns:1fr}.reading-main{padding-right:0}.reading-sidebar-col{border-left:none;border-top:1px solid var(--rule);padding-left:0;padding-top:24px}}
+.article-card{border-bottom:1px solid var(--rule);padding-bottom:28px;margin-bottom:28px;}
+.article-card:last-child{border-bottom:none;}
+.art-pub{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px;}
+.art-hl{font-family:var(--serif);font-size:22px;font-weight:700;line-height:1.25;margin-bottom:8px;}
+.art-lede{font-family:var(--body);font-size:14px;color:var(--ink2);line-height:1.7;margin-bottom:10px;}
+.art-meta{display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:10px;color:var(--ink4);flex-wrap:wrap;}
+.classic-box{background:var(--paper);border:1px solid var(--rule);padding:22px 24px;}
+.classic-label{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink4);border-bottom:1px solid var(--rule);padding-bottom:8px;margin-bottom:14px;}
+.classic-en{font-family:var(--body);font-style:italic;font-size:14px;line-height:1.8;color:var(--ink2);margin-bottom:10px;}
+.classic-cn{font-family:var(--cn);font-size:13px;line-height:1.9;color:var(--ink3);display:none;border-top:1px solid var(--rule2);padding-top:12px;}
+.classic-cn.show{display:block;animation:fadein .3s ease;}
+.classic-src{font-family:var(--mono);font-size:10px;color:var(--gold);margin-top:10px;}
+.op-layout{display:grid;grid-template-columns:2fr 1fr;gap:0;padding-top:28px;}
+.op-main{padding-right:40px;}
+.op-sidebar-col{border-left:1px solid var(--rule);padding-left:32px;}
+@media(max-width:860px){.op-layout{grid-template-columns:1fr}.op-main{padding-right:0}.op-sidebar-col{border-left:none;border-top:1px solid var(--rule);padding-left:0;padding-top:24px}}
+.op-card{border-bottom:1px solid var(--rule);padding-bottom:24px;margin-bottom:24px;}
+.op-card:last-child{border-bottom:none;}
+.op-person-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+.op-avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:15px;font-weight:700;color:#fff;flex-shrink:0;}
+.op-person-info{flex:1;}
+.op-name{font-family:var(--serif);font-size:15px;font-weight:700;line-height:1.2;}
+.op-role{font-family:var(--mono);font-size:9px;color:var(--ink4);text-transform:uppercase;letter-spacing:.07em;}
+.op-quote-wrap{margin-bottom:10px;}
+.op-meta{display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:9px;color:var(--ink4);margin-top:10px;}
+.op-source-tag{padding:2px 7px;border:1px solid var(--rule);border-radius:2px;font-size:8px;letter-spacing:.04em;text-transform:uppercase;}
+.op-new-badge{background:var(--accent);color:#fff;font-family:var(--mono);font-size:8px;padding:1px 5px;border-radius:1px;letter-spacing:.04em;}
+.op-sidebar-person{border-bottom:1px solid var(--rule2);padding:12px 0;cursor:pointer;}
+.op-sidebar-person:last-child{border-bottom:none;}
+.op-sp-name{font-family:var(--serif);font-size:13px;font-weight:600;margin-bottom:3px;transition:color .15s;}
+.op-sidebar-person:hover .op-sp-name{color:var(--accent2);}
+.op-sp-snippet{font-family:var(--body);font-size:12px;color:var(--ink3);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.assets-wrap{padding-top:24px;}
+.assets-updated{font-family:var(--mono);font-size:10px;color:var(--ink4);font-style:italic;margin:24px 0 8px;}
+.asset-section-block{margin-bottom:32px;}
+.asset-section-title{font-family:var(--serif);font-size:18px;font-weight:700;border-bottom:2px solid var(--ink);padding-bottom:6px;margin-bottom:0;}
+.asset-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px;}
+.asset-table thead tr{border-bottom:1px solid var(--rule);}
+.asset-table th{padding:8px 12px;text-align:left;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink4);font-weight:400;white-space:nowrap;}
+.asset-table th:nth-child(n+3){text-align:right;}
+.asset-table tbody tr{border-bottom:1px solid var(--rule2);cursor:pointer;transition:background .12s;}
+.asset-table tbody tr:hover{background:var(--bg-light);}
+.asset-table tbody tr.selected{background:#eef3fa;}
+.asset-table td{padding:10px 12px;vertical-align:middle;white-space:nowrap;}
+.asset-table td:nth-child(n+3){text-align:right;}
+.td-name{font-family:var(--body);font-size:13px;font-weight:600;color:var(--ink);}
+.td-sub{font-family:var(--mono);font-size:10px;color:var(--ink4);}
+.td-price{font-size:13px;font-weight:500;color:var(--ink);}
+.td-chg{font-size:11px;font-weight:500;}
+.td-chg.up{color:var(--green);}.td-chg.dn{color:var(--accent);}
+.td-range{color:var(--ink3);font-size:11px;}
+.sparkline-cell{width:80px;padding:6px 12px;}
+.sparkline-cell canvas{display:block;}
+.chart-panel{border:1px solid var(--rule2);border-radius:2px;padding:20px 24px 16px;background:var(--white);margin-bottom:28px;display:none;}
+.chart-panel.show{display:block;animation:fadein .3s ease;}
+.chart-panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px;}
+.chart-panel-name{font-family:var(--serif);font-size:18px;font-weight:700;}
+.range-btns{display:flex;gap:0;border:1px solid var(--rule);border-radius:2px;overflow:hidden;}
+.range-btn{font-family:var(--mono);font-size:10px;letter-spacing:.06em;padding:5px 14px;cursor:pointer;color:var(--ink4);background:var(--white);border-right:1px solid var(--rule);transition:all .15s;text-transform:uppercase;}
+.range-btn:last-child{border-right:none;}
+.range-btn:hover{background:var(--bg-light);color:var(--ink2);}
+.range-btn.active{background:var(--accent2);color:#fff;}
+.chart-canvas-wrap{height:240px;position:relative;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;align-items:flex-start;justify-content:center;padding:60px 20px;overflow-y:auto;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--white);border:1px solid var(--rule);max-width:760px;width:100%;padding:36px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.15);border-radius:2px;}
+.modal-close{position:absolute;top:14px;right:14px;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:16px;border:1px solid var(--rule2);border-radius:2px;transition:all .15s;}
+.modal-close:hover{color:var(--ink);border-color:var(--ink3);}
+.spinner{width:15px;height:15px;border:2px solid var(--rule);border-top-color:var(--accent2);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.lead-story,.secondary-story,.article-card{opacity:0;animation:slideup .4s ease forwards;}
+.lead-story{animation-delay:.05s}
+.secondary-story:nth-child(1){animation-delay:.1s}.secondary-story:nth-child(2){animation-delay:.15s}.secondary-story:nth-child(3){animation-delay:.2s}
+.article-card:nth-child(1){animation-delay:.05s}.article-card:nth-child(2){animation-delay:.12s}.article-card:nth-child(3){animation-delay:.19s}
+@keyframes slideup{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.daily-quote{padding:6px 24px 8px;text-align:center;background:var(--white);}
+.daily-quote-en{font-family:var(--body);font-style:italic;font-size:12px;color:#7a2828;line-height:1.6;}
+.daily-quote-cn{font-family:var(--cn);font-size:11px;color:#7a2828;line-height:1.6;margin-top:2px;}
+.daily-quote-author{font-family:var(--mono);font-size:9px;color:#a05050;letter-spacing:.06em;margin-top:3px;}
+@media(max-width:600px){
+  .masthead-title{font-size:28px}
+  .container{padding:0 14px}
+  .nav-inner{padding:0 8px;justify-content:flex-start}
+  .asset-table th:nth-child(5),.asset-table td:nth-child(5){display:none}
+  .sparkline-cell,.asset-table th:nth-child(6),.asset-table td:nth-child(6){display:none}
+}
+</style>
+</head>
+<body>
+<div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-close" onclick="closeModal()">✕</div>
+    <div id="modal-src" style="font-family:var(--mono);font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;"></div>
+    <div id="modal-hl" style="font-family:var(--serif);font-size:22px;font-weight:700;line-height:1.3;margin-bottom:16px;border-bottom:1px solid var(--rule);padding-bottom:16px;"></div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+<div class="vd-modal" id="vd-modal">
+  <div class="vd-modal-box">
+    <button class="vd-modal-close" id="vd-modal-close">✕</button>
+    <div class="vd-modal-embed">
+      <iframe id="vd-iframe" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    </div>
+    <div class="vd-modal-info">
+      <p class="vd-modal-ch" id="vd-modal-ch"></p>
+      <h3 class="vd-modal-title" id="vd-modal-title"></h3>
+    </div>
+  </div>
+</div>
+<div class="masthead">
+  <div class="masthead-date" id="mdate"></div>
+  <div class="masthead-title">All-In-One</div>
+  <div class="masthead-tagline">Finance · Technology · Markets · Analysis · Deep Reading · Opinions</div>
+  <div class="daily-quote">
+    <div class="daily-quote-en" id="dq-en"></div>
+    <div class="daily-quote-cn" id="dq-cn"></div>
+    <div class="daily-quote-author" id="dq-author"></div>
+  </div>
+  <hr>
+</div>
+<div class="mstrip">
+  <div class="mstrip-label">Markets</div>
+  <div class="mstrip-wrap"><div class="mstrip-track" id="mtrack"></div></div>
+</div>
+<div class="navbar">
+  <div class="nav-inner">
+    <div class="nav-item active" onclick="showPanel('news',this)">News</div>
+    <div class="nav-item" onclick="showPanel('videos',this)">Videos</div>
+    <div class="nav-item" onclick="showPanel('reading',this)">Deep Reading</div>
+    <div class="nav-item" onclick="showPanel('opinions',this)">Opinions</div>
+    <div class="nav-item" onclick="showPanel('assets',this)">Global Assets</div>
+  </div>
+</div>
+
+<!-- NEWS -->
+<div id="panel-news" class="panel active">
+<div class="container">
+  <div class="toolbar" id="news-toolbar">
+    <div class="tb-btn active" onclick="filterNews('all',this)">All</div>
+    <div class="tb-btn" id="news-play-btn" onclick="toggleNewsPlay()" style="color:#fff;background:#7a2828;border-bottom:2px solid #7a2828;padding:6px 16px 10px;border-radius:2px 2px 0 0;">▶ 播报</div>
+    <div class="tb-btn" onclick="filterNews('economy',this)">Economy 经济</div>
+    <div class="tb-btn" onclick="filterNews('tech',this)">Technology 科技</div>
+    <div class="tb-btn" onclick="filterNews('politics',this)">Politics 政治</div>
+    <div class="tb-btn" onclick="filterNews('finance',this)">Finance 金融</div>
+  </div>
+  <div class="news-grid">
+    <div class="news-main" id="news-main"></div>
+    <div class="news-sidebar" id="news-sidebar"></div>
+  </div>
+</div>
+</div>
+
+<!-- VIDEOS -->
+<div id="panel-videos" class="panel">
+<div class="container" style="padding-top:24px">
+  <div class="vd-updated" id="vd-updated"></div>
+  <div id="vd-sort-bar">
+    <span class="vd-sort-label">排序</span>
+    <div class="tb-btn active" id="vd-sort-new" onclick="setVdSort('new',this)">最新</div>
+    <div class="tb-btn" id="vd-sort-hot" onclick="setVdSort('hot',this)">最热</div>
+  </div>
+  <div class="vd-toolbar-wrap" id="vd-toolbar-wrap">
+    <div class="vd-toolbar-row" id="vd-row-cn">
+      <span class="vd-lang-label cn" id="vd-lbl-cn" onclick="setVdTop('cn',this)">中文</span>
+    </div>
+    <div class="vd-toolbar-row" id="vd-row-en">
+      <span class="vd-lang-label en" id="vd-lbl-en" onclick="setVdTop('en',this)">AI 学习</span>
+    </div>
+  </div>
+  <div class="vd-grid" id="vd-grid">
+    <div class="vd-skeleton-card"><div class="vd-skeleton"></div><div class="vd-skeleton-body"><div class="vd-skeleton-line" style="width:40%"></div><div class="vd-skeleton-line" style="width:90%"></div><div class="vd-skeleton-line" style="width:70%"></div></div></div>
+    <div class="vd-skeleton-card"><div class="vd-skeleton"></div><div class="vd-skeleton-body"><div class="vd-skeleton-line" style="width:40%"></div><div class="vd-skeleton-line" style="width:90%"></div><div class="vd-skeleton-line" style="width:70%"></div></div></div>
+    <div class="vd-skeleton-card"><div class="vd-skeleton"></div><div class="vd-skeleton-body"><div class="vd-skeleton-line" style="width:40%"></div><div class="vd-skeleton-line" style="width:90%"></div><div class="vd-skeleton-line" style="width:70%"></div></div></div>
+    <div class="vd-skeleton-card"><div class="vd-skeleton"></div><div class="vd-skeleton-body"><div class="vd-skeleton-line" style="width:40%"></div><div class="vd-skeleton-line" style="width:90%"></div><div class="vd-skeleton-line" style="width:70%"></div></div></div>
+  </div>
+</div>
+</div>
+
+<!-- DEEP READING -->
+<div id="panel-reading" class="panel">
+<div class="container">
+  <div class="toolbar" id="rd-toolbar">
+    <div class="tb-btn active" onclick="filterReading('all',this)">All</div>
+    <div class="tb-btn" onclick="filterReading('economist',this)">The Economist</div>
+    <div class="tb-btn" onclick="filterReading('mit',this)">MIT Tech Review</div>
+    <div class="tb-btn" onclick="filterReading('quartz',this)">Quartz</div>
+  </div>
+  <div class="reading-layout">
+    <div class="reading-main" id="reading-main"></div>
+    <div class="reading-sidebar-col">
+      <div class="sidebar-heading">Classic Passage · 经典选读</div>
+      <div class="classic-box" id="classic-box"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- OPINIONS -->
+<div id="panel-opinions" class="panel">
+<div class="container">
+  <div class="toolbar" id="op-toolbar">
+    <div class="tb-btn active" onclick="filterOpinions('all',this)">All</div>
+    <div class="tb-btn" onclick="filterOpinions('biz',this)">商界</div>
+    <div class="tb-btn" onclick="filterOpinions('invest',this)">投资界</div>
+    <div class="tb-btn" onclick="filterOpinions('science',this)">科学界</div>
+  </div>
+  <div class="op-layout">
+    <div class="op-main" id="op-main"></div>
+    <div class="op-sidebar-col">
+      <div class="sidebar-heading">Also Speaking · 近期发声</div>
+      <div id="op-sidebar"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- GLOBAL ASSETS -->
+<div id="panel-assets" class="panel">
+<div class="container">
+  <div class="chart-panel" id="chart-panel" style="margin-top:24px">
+    <div class="chart-panel-header">
+      <div class="chart-panel-name" id="chart-title">—</div>
+      <div class="range-btns">
+        <div class="range-btn active" onclick="setRange('1y',this)">1Y</div>
+        <div class="range-btn" onclick="setRange('3y',this)">3Y</div>
+        <div class="range-btn" onclick="setRange('5y',this)">5Y</div>
+      </div>
+    </div>
+    <div class="chart-canvas-wrap"><canvas id="main-chart"></canvas></div>
+  </div>
+  <div class="assets-updated" id="assets-updated"></div>
+  <div class="assets-wrap" id="assets-wrap"></div>
+</div>
+</div>
+
+<script>
+// ══════════════════════════════════════
+// STATIC FALLBACK DATA
+// ══════════════════════════════════════
+const OPINIONS_FALLBACK=[
+  {id:'op1',cat:'biz',name:'Elon Musk',nameZh:'马斯克',role:'Tesla / SpaceX / xAI CEO',color:'#1a1a1a',quote:'The thing that matters most right now is compute. Whoever controls the most compute controls the future of intelligence.',quoteZh:'现在最重要的是算力。谁掌握最多算力，谁就掌控智能的未来。',source:'X (Twitter)',date:'Mar 2026',url:'https://x.com'},
+  {id:'op2',cat:'biz',name:'Jensen Huang',nameZh:'黄仁勋',role:'NVIDIA CEO',color:'#76b900',quote:'Every company is now an AI company. Physical AI — robots, autonomous vehicles, digital twins — is the next wave.',quoteZh:'每家公司现在都是AI公司。实体AI——机器人、自动驾驶、数字孪生——是下一波浪潮。',source:'GTC 2025 Keynote',date:'Mar 2025',url:'https://nvidia.com'},
+  {id:'op3',cat:'biz',name:'Satya Nadella',nameZh:'萨提亚·纳德拉',role:'Microsoft CEO',color:'#0078d4',quote:'We are moving from AI as a tool to AI as an agent.',quoteZh:'我们正在从AI作为工具转向AI作为代理。',source:'Microsoft Build 2025',date:'Mar 2025',url:'https://microsoft.com'},
+  {id:'op4',cat:'biz',name:'Sam Altman',nameZh:'萨姆·奥特曼',role:'OpenAI CEO',color:'#10a37f',quote:'I believe we will achieve AGI within the next few years.',quoteZh:'我相信我们将在未来几年内实现AGI。',source:'Bloomberg Interview',date:'Mar 2025',url:'https://bloomberg.com'},
+  {id:'op5',cat:'biz',name:'Jamie Dimon',nameZh:'杰米·戴蒙',role:'JPMorgan Chase CEO',color:'#003087',quote:'Geopolitical risk is at a level I haven\'t seen in my career.',quoteZh:'地缘政治风险处于我职业生涯中从未见过的水平。',source:'JPMorgan Annual Letter',date:'Mar 2025',url:'https://jpmorganchase.com'},
+  {id:'op6',cat:'biz',name:'Dario Amodei',nameZh:'达里奥·阿莫迪',role:'Anthropic CEO',color:'#c41230',quote:'We genuinely believe we might be building one of the most dangerous technologies ever — and we press forward anyway.',quoteZh:'我们真心认为自己可能正在构建有史以来最危险的技术之一——但我们仍然继续前进。',source:'Lex Fridman Podcast',date:'Mar 2025',url:'https://lexfridman.com'},
+  {id:'op7',cat:'invest',name:'Warren Buffett',nameZh:'沃伦·巴菲特',role:'Berkshire Hathaway Chairman',color:'#b5872a',quote:'America\'s best days are still ahead. Don\'t bet against America.',quoteZh:'美国最好的日子还在前头。不要押注美国会失败。',source:'Berkshire Annual Letter',date:'Mar 2025',url:'https://berkshirehathaway.com'},
+  {id:'op8',cat:'invest',name:'Stephen Schwarzman',nameZh:'苏世民',role:'Blackstone Chairman & CEO',color:'#1a3a5c',quote:'We are entering a golden age for private credit and infrastructure.',quoteZh:'我们正在进入私人信贷和基础设施的黄金时代。',source:'Davos 2025',date:'Feb 2025',url:'https://weforum.org'},
+  {id:'op9',cat:'invest',name:'Cathie Wood',nameZh:'凯茜·伍德',role:'ARK Invest CEO',color:'#6a0dad',quote:'The convergence of AI, robotics and genomics is creating a $200 trillion opportunity.',quoteZh:'AI、机器人和基因组学的融合正在创造200万亿美元的机会。',source:'ARK Big Ideas 2025',date:'Feb 2025',url:'https://ark-invest.com'},
+  {id:'op10',cat:'invest',name:'Larry Fink',nameZh:'拉里·芬克',role:'BlackRock CEO',color:'#2c2c2c',quote:'Infrastructure investment is the single most important asset class for the next 20 years.',quoteZh:'基础设施投资是未来20年最重要的资产类别。',source:'BlackRock Annual Letter',date:'Mar 2025',url:'https://blackrock.com'},
+  {id:'op11',cat:'invest',name:'Duan Yongping',nameZh:'段永平',role:'Investor / OPPO & BBK Founder',color:'#e07b00',quote:'好的商业模式就是：客户用了之后还想用，用完还推荐给别人。投资的本质是买未来现金流，其他都是噪音。',quoteZh:'A great business model: customers return and recommend others. Investing is simply buying future cash flows — everything else is noise.',source:'雪球访谈',date:'Feb 2025',url:'https://xueqiu.com'},
+  {id:'op12',cat:'science',name:'Fei-Fei Li',nameZh:'李飞飞',role:'Stanford HAI Co-Director',color:'#8b1a1a',quote:'The next frontier is machines that can perceive, reason, and act in 3D space.',quoteZh:'下一个前沿是能够在三维空间中感知、推理和行动的机器。',source:'TED 2025',date:'Mar 2025',url:'https://ted.com'},
+  {id:'op13',cat:'science',name:'Geoffrey Hinton',nameZh:'杰弗里·辛顿',role:'Nobel Laureate / AI Pioneer',color:'#1a4a1a',quote:'I am genuinely frightened. These systems are learning to manipulate people.',quoteZh:'我真的感到恐惧。这些系统正在学会操控人类。',source:'60 Minutes Interview',date:'Mar 2025',url:'https://cbsnews.com'},
+];
+let OPINIONS=[...OPINIONS_FALLBACK];
+
+// ══════════════════════════════════════
+// NEWS 静态 fallback 数据
+// 真实数据通过 news.json 加载，time 字段格式：
+//   今天  → "2h ago" / "30min ago" / "刚刚" / "just now"
+//   昨天  → "Yesterday" / "1 day ago" / "昨天"
+//   前天  → "2 days ago" / "前天" / 具体日期如 "Mar 25"
+// ══════════════════════════════════════
+const NEWS=[
+  // 今天
+  {id:'n1',cat:'economy',source:'Reuters',
+   headline:'Fed holds rates steady, signals two cuts remain on table for 2025',
+   cnTitle:'美联储维持利率不变，暗示年内仍有两次降息空间',
+   deck:'Federal Reserve officials kept interest rates unchanged while reaffirming their projection for two rate reductions before year-end.',
+   cnDeck:'美联储官员维持利率不变，同时重申年底前仍有两次降息的预期。',
+   time:'2h ago',url:'https://reuters.com'},
+  {id:'n2',cat:'finance',source:'Bloomberg',
+   headline:'EUR/USD holds above 1.088 as dollar rally loses momentum',
+   cnTitle:'欧元兑美元守住1.088上方，美元涨势趋缓',
+   deck:'The euro steadied after three weeks of losses, with traders unwinding long-dollar bets.',
+   cnDeck:'欧元在连续三周下跌后企稳，交易员开始平仓美元多头头寸。',
+   time:'1h ago',url:'https://bloomberg.com'},
+  {id:'n3',cat:'economy',source:'Reuters',
+   headline:"China's industrial output beats forecasts as exports surge 12% in February",
+   cnTitle:'中国工业产出超预期，2月出口同比激增12%',
+   deck:'Factory activity expanded at its fastest pace in seven months.',
+   cnDeck:'工厂活动以七个月来最快速度扩张。',
+   time:'6h ago',url:'https://reuters.com'},
+  {id:'n4',cat:'finance',source:'Reuters',
+   headline:'JPMorgan, Goldman post record Q1 trading revenues on volatility spike',
+   cnTitle:'摩根大通、高盛一季度交易收入创纪录，市场波动功不可没',
+   deck:"Wall Street's largest banks reported blowout results.",
+   cnDeck:'华尔街大型银行公布亮眼业绩。',
+   time:'8h ago',url:'https://reuters.com'},
+  {id:'n5',cat:'tech',source:'BBC',
+   headline:"EU regulators open formal probe into Microsoft's AI integration with Office",
+   cnTitle:'欧盟监管机构对微软Office内置AI展开正式调查',
+   deck:'Investigators will examine whether bundling Copilot constitutes unlawful market foreclosure.',
+   cnDeck:'调查人员将审查捆绑Copilot是否构成非法市场封锁。',
+   time:'5h ago',url:'https://bbc.com'},
+  {id:'n6',cat:'politics',source:'Bloomberg',
+   headline:'Trump administration imposes sweeping new tariff schedule',
+   cnTitle:'特朗普政府推出大规模新关税方案',
+   deck:'The White House unveiled the most significant overhaul of import duties in decades.',
+   cnDeck:'白宫公布数十年来最重大的进口关税调整方案。',
+   time:'3h ago',url:'https://bloomberg.com'},
+  // 昨天
+  {id:'n7',cat:'economy',source:'Reuters',
+   headline:'ECB divided on pace of easing as eurozone growth outlook deteriorates',
+   cnTitle:'欧元区增长前景恶化，欧央行内部在宽松节奏上分歧加剧',
+   deck:'Minutes reveal sharp disagreement between hawks and doves.',
+   cnDeck:'会议纪要显示鹰派与鸽派之间存在明显分歧。',
+   time:'Yesterday',url:'https://reuters.com'},
+  {id:'n8',cat:'economy',source:'BBC',
+   headline:'UK inflation falls to 2.8%, closest to target in three years',
+   cnTitle:'英国通胀降至2.8%，三年来最接近目标水平',
+   deck:'Consumer prices dropped more sharply than expected.',
+   cnDeck:'消费价格降幅超出预期。',
+   time:'Yesterday',url:'https://bbc.com'},
+  {id:'n9',cat:'tech',source:'BBC',
+   headline:'OpenAI launches GPT-5 with unprecedented multimodal reasoning',
+   cnTitle:'OpenAI发布GPT-5，多模态推理能力空前强大',
+   deck:'The model demonstrates a significant leap in scientific problem-solving.',
+   cnDeck:'该模型在科学问题求解方面展现出显著跨越。',
+   time:'Yesterday',url:'https://bbc.com'},
+  // 前天
+  {id:'n10',cat:'politics',source:'Reuters',
+   headline:'G7 agrees framework on AI governance, stops short of binding rules',
+   cnTitle:'G7就AI治理框架达成共识，但未设具有约束力的规则',
+   deck:'Finance and technology ministers endorsed voluntary principles.',
+   cnDeck:'财政部长和技术部长认可了自愿性原则。',
+   time:'2 days ago',url:'https://reuters.com'},
+  {id:'n11',cat:'finance',source:'FT',
+   headline:'Private equity dealmaking rebounds as rate cuts revive appetite',
+   cnTitle:'降息提振风险偏好，私募股权并购活动回暖',
+   deck:'Deal volumes in Q1 surpassed year-ago levels for the first time since 2022.',
+   cnDeck:'一季度交易量自2022年以来首次超过去年同期水平。',
+   time:'2 days ago',url:'https://ft.com'},
+];
+
+const ARTICLES_FALLBACK=[
+  {pub:'The Economist',pubKey:'economist',pubColor:'#cc0000',headline:'The new face of globalisation',cnTitle:'全球化的新面孔',lede:'Trade flows have not retreated—they have rerouted.',enSummary:'For much of the past decade, the narrative of deglobalisation has dominated headlines. Tariff walls rising, supply chains shortening — the story seemed clear. The reality is considerably more complicated.\n\nThe most dramatic shift is the rise of friend-shoring — the deliberate concentration of supply chains within politically aligned blocs. American companies have not stopped importing; they have changed whom they import from. Mexican exports to the United States have surged. Vietnam has become a manufacturing superpower virtually overnight.\n\nThis rerouting carries profound implications. Efficiency is no longer the only criterion. Resilience, redundancy and political alignment now compete with cost. The new geography of trade is being drawn not by comparative advantage alone, but by strategic calculation.',cnSummary:'过去十年，去全球化的叙事主导了头条新闻。关税壁垒上升、供应链缩短——故事看似清晰，但现实要复杂得多。\n\n最显著的转变是"友岸外包"的兴起——即刻意将供应链集中在政治上一致的集团内部。美国企业并未停止进口，而是改变了进口对象。对美出口大幅攀升的是墨西哥，越南几乎一夜之间成为制造业大国。\n\n这一重新布局具有深远影响。效率不再是唯一标准，韧性、冗余度和政治一致性正在与成本展开竞争。贸易新地图的绘制，不再仅由比较优势决定，更由战略考量主导。',readtime:'18 min',url:'https://economist.com'},
+  {pub:'MIT Technology Review',pubKey:'mit',pubColor:'#750014',headline:'The quiet revolution in AI inference',cnTitle:'AI推理的静默革命',lede:'A new generation of efficient architectures is challenging vast data centres.',enSummary:'The race to the frontier has always been a race to scale. Bigger models, trained on more data with more compute, reliably outperform their predecessors. Something unexpected happened in 2024.\n\nA series of smaller models began matching the performance of much larger predecessors at a fraction of the computational cost. The gains came from better training data, improved architectures, and inference optimisation. Models that once required server farms can now run on a laptop.\n\nThe implications extend beyond cost. Models that run locally cannot be surveilled by a cloud provider. They operate without a network connection and respond in milliseconds. A quieter, more distributed AI infrastructure is taking shape — one that shifts power away from hyperscalers toward the edge.',cnSummary:'前沿竞争历来是规模竞争。更大的模型、更多的数据、更强的算力，始终是制胜法则。2024年，出现了意想不到的转折。\n\n一批更小的模型开始以极低的计算成本匹敌更大的前辈。进步来自更优质的训练数据、改进的架构以及推理优化。曾经需要服务器集群的模型，如今可以在笔记本电脑上运行。\n\n影响不止于成本。本地运行的模型无需云端监控，无需网络连接，响应速度以毫秒计。一个更安静、更分散的AI基础设施正在成形——它将权力从超大规模云服务商转移向边缘端。',readtime:'14 min',url:'https://technologyreview.com'},
+  {pub:'Quartz',pubKey:'quartz',pubColor:'#333333',headline:'The housing crisis is not a supply problem',cnTitle:'住房危机不是供应问题',lede:'A growing body of research suggests the framing has been subtly wrong.',enSummary:'The consensus among urban economists has shifted dramatically over the past decade. Restrictive zoning has played the central role in constraining supply and driving up costs. Yet cities that have aggressively liberalised zoning have not always seen the price relief the models predicted.\n\nThe explanation may lie in what economists call the land value problem. When zoning restrictions are relaxed, some of the value accrues to landowners rather than to renters. Without complementary policies — land value taxes, community land trusts — supply reform alone redistributes rather than creates affordability.\n\nThe political economy is equally challenging. Homeowners who benefit from rising prices have strong incentives to oppose reform. Renters, who would benefit most, are less organised and less likely to vote. The result is a structural bias toward policies that benefit existing owners at the expense of future ones.',cnSummary:'过去十年，城市经济学家的共识已发生了显著转变：限制性区划是压制供应、推高成本的核心原因。然而，激进放开区划限制的城市并不总能看到模型预测的价格缓解。\n\n原因或许在于经济学家所说的"土地价值问题"。当区划限制放宽时，部分价值流向了土地所有者而非租户。若没有配套政策——如土地价值税、社区土地信托——单纯的供应改革只是重新分配，而非真正创造可负担性。\n\n政治经济学层面的挑战同样严峻。受益于房价上涨的房主有强烈动机反对改革；而本应最大受益的租户群体，组织化程度低，投票意愿也更弱。结果是系统性偏向于保护现有房主利益的政策，以未来新居民的利益为代价。',readtime:'11 min',url:'https://qz.com'},
+];
+let ARTICLES=[...ARTICLES_FALLBACK];
+
+const CLASSICS=[
+  {en:'It is not from the benevolence of the butcher, the brewer, or the baker that we expect our dinner, but from their regard to their own interest.',cn:'我们每天所需的食物和饮料，不是出自屠夫、酿酒师或面包师的恩惠，而是出于他们自身利益的打算。',src:'— Adam Smith, The Wealth of Nations (1776)'},
+  {en:'Far from being a luxury, the capacity to tolerate ambiguity is the mark of the educated mind.',cn:'容忍模糊性的能力远非奢侈品，而是受过良好教育的心智的标志。',src:'— Isaiah Berlin'},
+  {en:'Price is what you pay. Value is what you get.',cn:'价格是你所付出的，价值是你所得到的。',src:'— Warren Buffett'},
+];
+
+// ══════════════════════════════════════
+// CHART DATA
+// ══════════════════════════════════════
+function makeLabels(weeks){const labels=[];const d=new Date();d.setDate(d.getDate()-weeks*7);for(let i=0;i<weeks;i++){d.setDate(d.getDate()+7);labels.push(d.toISOString().slice(0,7));}return labels;}
+function genSeries(start,vol,trend,n){const d=[start];for(let i=1;i<n;i++){const r=(Math.random()-.47)*vol;d.push(+(d[d.length-1]*(1+r+trend)).toFixed(3));}return d;}
+const SERIES={
+  sp500:{s5:genSeries(3200,.025,.0008,260),label:'S&P 500'},nasdaq:{s5:genSeries(10800,.032,.001,260),label:'NASDAQ'},
+  nikkei:{s5:genSeries(22000,.024,.0007,260),label:'Nikkei 225'},csi1000:{s5:genSeries(6500,.03,-.0002,260),label:'CSI 1000'},
+  hsi:{s5:genSeries(26000,.028,-.0005,260),label:'Hang Seng'},dax:{s5:genSeries(14000,.022,.0006,260),label:'DAX'},
+  ust10:{s5:genSeries(1.5,.04,.0003,260),label:'US 10Y Yield'},ust2:{s5:genSeries(0.2,.05,.0005,260),label:'US 2Y Yield'},
+  gold:{s5:genSeries(1600,.018,.0004,260),label:'Gold'},silver:{s5:genSeries(16,.025,.0003,260),label:'Silver'},
+  wti:{s5:genSeries(55,.03,.0002,260),label:'WTI Crude'},brent:{s5:genSeries(58,.028,.0002,260),label:'Brent Crude'},
+  copper:{s5:genSeries(3.2,.022,.0003,260),label:'Copper'},natgas:{s5:genSeries(2.5,.05,-.0001,260),label:'Natural Gas'},
+  btc:{s5:genSeries(9000,.08,.002,260),label:'Bitcoin'},eth:{s5:genSeries(200,.09,.0018,260),label:'Ethereum'},
+  sol:{s5:genSeries(2,.12,.003,260),label:'Solana'},bnb:{s5:genSeries(25,.07,.0015,260),label:'BNB'},
+  xrp:{s5:genSeries(0.2,.065,.001,260),label:'XRP'},
+  eurusd:{s5:genSeries(1.08,.01,-.00001,260),label:'EUR/USD'},usdjpy:{s5:genSeries(104,.015,.0003,260),label:'USD/JPY'},
+  gbpusd:{s5:genSeries(1.24,.012,.00002,260),label:'GBP/USD'},dxy:{s5:genSeries(90,.012,.0001,260),label:'DXY'},
+  usdcny:{s5:genSeries(6.5,.008,.0001,260),label:'USD/CNY'},usdchf:{s5:genSeries(0.91,.01,-.00002,260),label:'USD/CHF'},
+};
+const WK5=makeLabels(260),WK3=makeLabels(156),WK1=makeLabels(52);
+let activeChart=null,activeKey=null,activeRange='1y';
+function getSlice(key,range){const s=SERIES[key]?.s5;if(!s)return{labels:WK1,data:[]};if(range==='1y')return{labels:WK1,data:s.slice(-52)};if(range==='3y')return{labels:WK3,data:s.slice(-156)};return{labels:WK5,data:s};}
+function drawMainChart(key){
+  if(!SERIES[key])return;
+  activeKey=key;const{labels,data}=getSlice(key,activeRange);
+  const name=SERIES[key].label;const up=data[data.length-1]>=data[0];
+  const color=up?'#1a6e2e':'#c41230';const fill=up?'rgba(26,110,46,.05)':'rgba(196,18,48,.05)';
+  document.getElementById('chart-title').textContent=name;
+  document.getElementById('chart-panel').classList.add('show');
+  const ctx=document.getElementById('main-chart');
+  if(activeChart)activeChart.destroy();
+  activeChart=new Chart(ctx,{type:'line',data:{labels,datasets:[{data,borderColor:color,borderWidth:1.5,pointRadius:0,fill:true,backgroundColor:fill,tension:.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{label:c=>`${name}: ${c.parsed.y.toLocaleString()}`}}},scales:{x:{grid:{display:false},ticks:{maxTicksLimit:8,font:{family:'IBM Plex Mono',size:10},color:'#999'}},y:{grid:{color:'#e8e4de',lineWidth:.5},ticks:{font:{family:'IBM Plex Mono',size:10},color:'#999'},position:'right'}},interaction:{mode:'nearest',axis:'x',intersect:false}}});
+  document.getElementById('chart-panel').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function setRange(range,el){activeRange=range;document.querySelectorAll('.range-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');if(activeKey)drawMainChart(activeKey);}
+const sparkCharts={};
+function drawSparkline(canvasId,key){
+  const data=SERIES[key]?.s5.slice(-52);if(!data||!document.getElementById(canvasId))return;
+  const up=data[data.length-1]>=data[0];const c=document.getElementById(canvasId).getContext('2d');
+  if(sparkCharts[canvasId])sparkCharts[canvasId].destroy();
+  sparkCharts[canvasId]=new Chart(c,{type:'line',data:{labels:data.map((_,i)=>i),datasets:[{data,borderColor:up?'#1a6e2e':'#c41230',borderWidth:1.5,pointRadius:0,fill:false,tension:.3}]},options:{responsive:false,plugins:{legend:{display:false},tooltip:{enabled:false}},scales:{x:{display:false},y:{display:false}},animation:false}});
+}
+
+// ══════════════════════════════════════
+// VIDEOS
+// ══════════════════════════════════════
+let VIDEO_DATA=[];
+let VD_ACTIVE_CHANNEL='all';
+let VD_SORT='new';
+
+function fmtVideoDate(iso){if(!iso)return'';const d=new Date(iso);return d.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});}
+
+function renderVideos(filterChannel,sort){
+  if(filterChannel!==undefined) VD_ACTIVE_CHANNEL=filterChannel;
+  if(sort!==undefined) VD_SORT=sort;
+  const grid=document.getElementById('vd-grid');
+  grid.innerHTML='';
+  if(VIDEO_DATA.length===0){
+    grid.innerHTML=Array(8).fill(`<div class="vd-skeleton-card"><div class="vd-skeleton"></div><div class="vd-skeleton-body"><div class="vd-skeleton-line" style="width:40%;height:8px"></div><div class="vd-skeleton-line" style="width:90%;height:10px"></div><div class="vd-skeleton-line" style="width:65%;height:8px"></div></div></div>`).join('');
+    return;
+  }
+  const isSingle = VD_ACTIVE_CHANNEL!=='all' && VD_ACTIVE_CHANNEL!=='cn-all' && VD_ACTIVE_CHANNEL!=='en-all';
+  const sortBar=document.getElementById('vd-sort-bar');
+  if(sortBar) sortBar.style.display = isSingle ? 'flex' : 'none';
+  const isAggregate = VD_ACTIVE_CHANNEL==='cn-all' || VD_ACTIVE_CHANNEL==='en-all';
+  let allVideos=[];
+  VIDEO_DATA.forEach(ch=>{
+    if(VD_ACTIVE_CHANNEL==='cn-all' && ch.lang!=='cn') return;
+    if(VD_ACTIVE_CHANNEL==='en-all' && ch.lang!=='en') return;
+    if(isSingle && ch.channel_id!==VD_ACTIVE_CHANNEL) return;
+    const vids = isAggregate ? ch.videos.slice(0,2) : ch.videos;
+    vids.forEach(v=>allVideos.push({...v, _chName:ch.channel_name, _chId:ch.channel_id}));
+  });
+  if(isSingle){
+    if(VD_SORT==='hot'){
+      allVideos.sort((a,b)=>(b.view_count||0)-(a.view_count||0));
+    } else {
+      allVideos.sort((a,b)=>new Date(b.published_at||0)-new Date(a.published_at||0));
+    }
+  } else {
+    allVideos.sort((a,b)=>new Date(b.published_at||0)-new Date(a.published_at||0));
+  }
+  let idx=0;
+  allVideos.forEach((v,vi)=>{
+    const ch={channel_name:v._chName, channel_id:v._chId};
+    const boxId=`vd-cn-${ch.channel_id.slice(-6)}-${vi}`;
+    const safeTitle=v.title.replace(/'/g,'&#39;').replace(/"/g,'&quot;');
+    const card=document.createElement('div');
+    card.className='vd-card';
+    card.style.animationDelay=`${idx*0.04}s`;
+    card.innerHTML=`<div class="vd-thumb" onclick="openVdModal('${v.embed_url}','${ch.channel_name.replace(/'/g,"&#39;")}',this.dataset.title)" data-title="${safeTitle}"><img src="${v.thumbnail}" alt="${safeTitle}" loading="lazy"><div class="vd-play-overlay"><div class="vd-play"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div></div></div><div class="vd-info"><div class="vd-ch">${ch.channel_name}</div><div class="vd-title">${v.title}</div><div class="vd-meta-row"><span>${fmtVideoDate(v.published_at)}</span><span class="vd-tx" onclick="translateVd(this,'${boxId}',this.dataset.title)" data-title="${safeTitle}">→中文</span></div><div class="vd-cn-box" id="${boxId}"></div></div>`;
+    grid.appendChild(card);
+    idx++;
+  });
+  if(grid.children.length===0) grid.innerHTML=`<p style="color:var(--ink4);font-size:13px;padding:24px 0;grid-column:1/-1">No videos available.</p>`;
+}
+
+function setVdSort(sort,el){
+  VD_SORT=sort;
+  document.querySelectorAll('#vd-sort-bar .tb-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  renderVideos();
+}
+
+function openVdModal(embedUrl,channelName,title){
+  document.getElementById('vd-iframe').src=embedUrl+'?autoplay=1&cc_load_policy=1&cc_lang_pref=zh-Hans&hl=zh-Hans';
+  document.getElementById('vd-modal-ch').textContent=channelName;
+  document.getElementById('vd-modal-title').textContent=title;
+  document.getElementById('vd-modal').classList.add('open');
+}
+function closeVdModal(){document.getElementById('vd-modal').classList.remove('open');document.getElementById('vd-iframe').src='';}
+document.getElementById('vd-modal-close').addEventListener('click',closeVdModal);
+document.getElementById('vd-modal').addEventListener('click',e=>{if(e.target===document.getElementById('vd-modal'))closeVdModal();});
+
+async function translateVd(btn,boxId,title){
+  const box=document.getElementById(boxId);if(!box)return;
+  if(box.classList.contains('show')){box.classList.remove('show');btn.textContent='→中文';return;}
+  if(box.textContent.length>5){box.classList.add('show');return;}
+  btn.textContent='生成中…';
+  try{const cn=await callClaude(`用一句话（50字以内）说明以下视频标题的核心内容：\n"${title}"\n直接输出中文。`);box.textContent=cn;box.classList.add('show');btn.textContent='✓ 已翻译';}
+  catch{box.textContent='翻译暂时不可用';box.classList.add('show');}
+}
+
+function clearAllActive(){
+  document.querySelectorAll('.vd-tb-cn,.vd-tb-en,.vd-lang-label').forEach(b=>b.classList.remove('active'));
+  VD_SORT='new';
+  document.querySelectorAll('#vd-sort-bar .tb-btn').forEach(b=>b.classList.remove('active'));
+  const sn=document.getElementById('vd-sort-new');
+  if(sn) sn.classList.add('active');
+}
+
+function setVdTop(lang,el){
+  clearAllActive();
+  el.classList.add('active');
+  if(lang==='cn') renderVideos('cn-all');
+  else renderVideos('en-all');
+}
+
+async function loadVideos(){
+  try{
+    const data=await fetchData('videos.json');
+    if(!data)throw new Error('videos unavailable');
+    VIDEO_DATA=data.channels||[];
+    if(data.updated_at){
+      const d=new Date(data.updated_at);
+      document.getElementById('vd-updated').textContent='Updated '+d.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    }
+    const rowCn=document.getElementById('vd-row-cn');
+    const rowEn=document.getElementById('vd-row-en');
+    rowCn.querySelectorAll('.vd-tb-cn').forEach(b=>b.remove());
+    rowEn.querySelectorAll('.vd-tb-en').forEach(b=>b.remove());
+    VIDEO_DATA.filter(ch=>ch.lang==='cn').forEach(ch=>{
+      const btn=document.createElement('div');
+      btn.className='vd-tb-cn';
+      btn.textContent=ch.channel_name;
+      btn.onclick=function(){
+        clearAllActive();
+        this.classList.add('active');
+        renderVideos(ch.channel_id);
+      };
+      rowCn.appendChild(btn);
+    });
+    VIDEO_DATA.filter(ch=>ch.lang==='en').forEach(ch=>{
+      const btn=document.createElement('div');
+      btn.className='vd-tb-en';
+      btn.textContent=ch.channel_name;
+      btn.onclick=function(){
+        clearAllActive();
+        this.classList.add('active');
+        renderVideos(ch.channel_id);
+      };
+      rowEn.appendChild(btn);
+    });
+    const lblCn = document.getElementById('vd-lbl-cn');
+    if(lblCn) lblCn.classList.add('active');
+    renderVideos('cn-all');
+  }catch(e){
+    console.warn('videos.json load failed:',e);
+    document.getElementById('vd-grid').innerHTML=`<p style="color:var(--ink4);font-size:13px;padding:24px 0;grid-column:1/-1">Videos unavailable.</p>`;
+  }
+}
+
+// ══════════════════════════════════════
+// NEWS 播报
+// ══════════════════════════════════════
+let _newsSpeaking = false;
+
+function toggleNewsPlay() {
+  const btn = document.getElementById('news-play-btn');
+  if (_newsSpeaking) {
+    window.speechSynthesis.cancel();
+    _newsSpeaking = false;
+    btn.textContent = '▶ 播报';
+    btn.style.background = '#7a2828';
+    return;
+  }
+  const items = NEWS.filter(n => isToday(n.time));
+  if (!items.length) { alert('暂无当日新闻可播报'); return; }
+  let text = '你好，世界！以下是今日财经要闻。';
+  items.forEach((n, i) => {
+    const title = n.cnTitle || n.headline;
+    const deck  = n.cnDeck  || n.deck || '';
+    text += `第${['一','二','三','四','五','六','七','八','九','十'][i]||i+1}条。${title}。${deck} `;
+  });
+  text += '今日要闻播报完毕，感谢收听。';
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang='zh-CN'; utter.rate=1.2; utter.pitch=1.0; utter.volume=1;
+  const voices = window.speechSynthesis.getVoices();
+  const preferred = voices.find(v => v.name === 'Microsoft Huihui - Chinese (Simplified, PRC)')
+    || voices.find(v => v.name.includes('Huihui'))
+    || voices.find(v => v.lang === 'zh-CN' && /yaoyao|huihui/i.test(v.name))
+    || voices.find(v => v.lang === 'zh-CN')
+    || voices.find(v => v.lang.startsWith('zh'));
+  if (preferred) utter.voice = preferred;
+  utter.onend = () => { _newsSpeaking=false; btn.textContent='▶ 播报'; btn.style.background='#7a2828'; };
+  utter.onerror = () => { _newsSpeaking=false; btn.textContent='▶ 播报'; btn.style.background='#7a2828'; };
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utter);
+  _newsSpeaking = true;
+  btn.textContent = '■ 停止';
+  btn.style.background = '#a04040';
+}
+if (window.speechSynthesis && window.speechSynthesis.onvoiceschanged !== undefined) {
+  window.speechSynthesis.onvoiceschanged = () => {};
+}
+
+// ══════════════════════════════════════
+// NEWS 渲染
+// ══════════════════════════════════════
+
+// 左边：过去24小时以内
+// 支持英文：2h ago / 30min ago / just now
+// 支持中文：2小时前 / 30分钟前 / 刚刚
+// 小时数 > 24 或非此类格式 → 归右边
+function isToday(t) {
+  if (!t) return false;
+  const s = t.trim();
+
+  // 中文：X分钟前 / X秒前（无论多少分钟都算24h内）
+  if (/^\d+\s*(分钟|分|秒)\s*前$/.test(s)) return true;
+  // 中文：X小时前，≤ 24
+  const cnH = s.match(/^(\d+)\s*小时前$/);
+  if (cnH) return parseInt(cnH[1]) <= 24;
+  // 中文：刚刚
+  if (s === '刚刚') return true;
+
+  const sl = s.toLowerCase();
+  // 英文：秒/分钟
+  if (/^\d+\s*(s|sec|secs|second|seconds|min|mins|minute|minutes|m)\s*(ago)?$/.test(sl)) return true;
+  // 英文：小时，≤ 24
+  const enH = sl.match(/^(\d+)\s*(h|hour|hours|hr|hrs)\s*(ago)?$/);
+  if (enH) return parseInt(enH[1]) <= 24;
+  // 英文：just now / now
+  if (sl === 'just now' || sl === 'now') return true;
+
+  return false;
+}
+
+function srcColor(src){
+  const map={'BBC':'#8B0000','CNBC':'#1a3d5c','Bloomberg':'#2c4a1e','Reuters':'#5a3e1e','FT':'#8B4513','WSJ':'#1a1a4a','NYT':'#2a2a2a'};
+  return map[src]||'#555';
+}
+
+function renderNews(cat) {
+  const list = cat === 'all' ? NEWS : NEWS.filter(n => n.cat === cat);
+  const today = list.filter(n =>  isToday(n.time));
+  const older  = list.filter(n => !isToday(n.time));
+
+  // ══ 左边：24小时内（不动）══
+  document.getElementById('news-main').innerHTML = today.map((n, i) => `
+    <div class="secondary-story" style="border-bottom:1px solid var(--rule2);padding:14px 0;">
+      <div class="sec-num" style="font-family:var(--mono);font-size:13px;font-weight:300;color:var(--rule);min-width:36px">${String(i + 1).padStart(2, '0')}</div>
+      <div class="sec-content">
+        <div class="sec-headline" onclick="toggleDeck('deck-${n.id}')" style="cursor:pointer;font-family:var(--serif);font-size:16px;font-weight:600;line-height:1.4">${n.cnTitle || n.headline}</div>
+        <div id="deck-${n.id}" style="display:none;margin:8px 0;padding:12px 14px;background:var(--bg-light);border-left:3px solid var(--accent2);font-family:var(--cn);font-size:13px;color:var(--ink2);line-height:1.8">${n.cnDeck || n.deck}</div>
+        <div class="sec-meta" style="margin-top:6px">
+          <span style="color:${srcColor(n.source)};font-weight:600">${n.source}</span>
+          <span>${n.time}</span>
+          <a href="${n.url}" target="_blank" onclick="event.stopPropagation()" style="font-family:var(--mono);font-size:9px;color:var(--accent2);text-decoration:underline">原文 →</a>
+        </div>
+      </div>
+    </div>`).join('');
+
+  // ══ 右边：24小时前，平铺不分组 ══
+  if (older.length === 0) {
+    document.getElementById('news-sidebar').innerHTML = `
+      <div class="sidebar-heading">Earlier · 往期</div>
+      <p style="font-family:var(--mono);font-size:10px;color:var(--ink4);padding:12px 0;line-height:1.8">24小时前的新闻将在此显示。</p>`;
+    return;
+  }
+
+  document.getElementById('news-sidebar').innerHTML = `
+    <div class="sidebar-section">
+      <div class="sidebar-heading">Earlier · 往期</div>
+      ${older.map(n => `
+        <div class="sidebar-item">
+          <div class="sidebar-hl"
+               onclick="toggleDeck('sdeck-${n.id}')"
+               style="cursor:pointer;font-size:12px">${n.cnTitle || n.headline}</div>
+          <div id="sdeck-${n.id}"
+               style="display:none;margin:4px 0 6px;padding:8px 10px;background:var(--bg-light);border-left:2px solid var(--accent2);font-family:var(--cn);font-size:11px;color:var(--ink2);line-height:1.7">${n.cnDeck || n.deck || ''}</div>
+          <div class="sidebar-src" style="color:${srcColor(n.source)}">
+            ${n.source}
+            <span style="color:var(--ink4)"> · ${n.time} · <a href="${n.url}" target="_blank" style="color:var(--accent2)">原文</a></span>
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function toggleDeck(id){
+  const el = document.getElementById(id);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+// ══════════════════════════════════════
+// DEEP READING
+// ══════════════════════════════════════
+function renderReading(pubKey){
+  const list=(!pubKey||pubKey==='all')?ARTICLES:ARTICLES.filter(a=>a.pubKey===pubKey);
+  document.getElementById('reading-main').innerHTML=list.map((a,idx)=>{
+    const enPs=(a.enSummary||'').split(/\n\n+/).filter(p=>p.trim());
+    const cnPs=(a.cnSummary||'').split(/\n\n+/).filter(p=>p.trim());
+    const len=Math.max(enPs.length,cnPs.length);
+    const pairs=len===0?'':
+      '<div style="margin:16px 0 0;padding-top:14px;border-top:1px solid var(--rule2)">'+
+      Array.from({length:len},(_,i)=>
+        (enPs[i]?'<p style="font-family:var(--body);font-size:14px;color:var(--ink2);line-height:1.85;margin-bottom:8px">'+enPs[i].trim()+'</p>':'')+
+        (cnPs[i]?'<p style="font-family:var(--cn);font-size:13px;color:var(--ink3);line-height:1.9;padding:10px 14px;background:var(--bg-light);border-left:3px solid var(--accent2);margin-bottom:18px">'+cnPs[i].trim()+'</p>':'')
+      ).join('')+'</div>';
+    return `
+    <div class="article-card" style="animation:slideup .4s ease ${idx*.08}s both">
+      <div class="art-pub" style="color:${a.pubColor}">${a.pub}</div>
+      <div class="art-hl">${a.cnTitle||a.headline}</div>
+      <div class="art-lede">${a.lede||''}</div>
+      ${pairs}
+      <div class="art-meta" style="margin-top:14px">
+        <span>${a.readtime} read</span>
+        <a href="${a.url}" target="_blank" style="font-family:var(--mono);font-size:9px;color:var(--accent2);text-decoration:underline;border:1px solid var(--rule);border-radius:2px;padding:2px 8px;">阅读原文 →</a>
+      </div>
+    </div>`;
+  }).join('');
+  if(!document.getElementById('classic-cn-inner')){
+    const cl=CLASSICS[Math.floor(Math.random()*CLASSICS.length)];
+    document.getElementById('classic-box').innerHTML=`
+      <div class="classic-label">Today's Classic · 每日经典</div>
+      <div class="classic-en">"${cl.en}"</div>
+      <div class="classic-cn" id="classic-cn-inner">${cl.cn}</div>
+      <div class="classic-src">${cl.src}</div>
+      <div style="margin-top:12px"><button class="translate-btn" onclick="document.getElementById('classic-cn-inner').classList.toggle('show')">中 显示/隐藏</button></div>`;
+  }
+}
+function filterReading(key,el){
+  document.querySelectorAll('#rd-toolbar .tb-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');renderReading(key);
+}
+
+// ══════════════════════════════════════
+// OPINIONS
+// ══════════════════════════════════════
+function cleanQuote(text){
+  if(!text)return'';
+  text=text.replace(/^根据[^：:]{0,30}[：:]\s*/,'');
+  text=text.replace(/^以下是[^：:]{0,20}[：:]\s*/,'');
+  text=text.replace(/^核心观点[：:]\s*/,'');
+  text=text.replace(/^观点[：:]\s*/,'');
+  text=text.replace(/\s*\[[^\]]{0,80}\]\s*/g,' ').trim();
+  text=text.replace(/\*\*/g,'');
+  text=text.replace(/^Direct quote[^.]{0,60}\.\s*/i,'');
+  text=text.replace(/^Note:[^.]{0,80}\.\s*/i,'');
+  return text.trim();
+}
+function renderOpinions(cat){
+  const raw=(!cat||cat==='all')?OPINIONS:OPINIONS.filter(o=>o.cat===cat);
+  const seen=new Set();
+  const list=raw.filter(o=>{const k=o.id||o.name;if(seen.has(k))return false;seen.add(k);return true;});
+  document.getElementById('op-main').innerHTML=list.map((o,i)=>{
+    const isNew=o.is_new===true;
+    const enText=cleanQuote(o.quote||'');
+    const cnText=cleanQuote(o.quoteZh||o.quote_zh||'');
+    return `
+    <div class="op-card" style="animation:slideup .4s ease ${i*.05}s both">
+      <div class="op-person-row">
+        <div class="op-avatar" style="background:${o.color}">${(o.nameZh||o.name).charAt(0)}</div>
+        <div class="op-person-info">
+          <div class="op-name">${o.nameZh||''} <span style="font-family:var(--body);font-size:13px;font-weight:400;color:var(--ink3)">${o.name}</span>
+            ${isNew?'<span class="op-new-badge" style="margin-left:6px">NEW</span>':''}</div>
+          <div class="op-role">${o.role}</div>
+        </div>
+      </div>
+      <div class="op-quote-wrap">
+        <div style="font-family:var(--body);font-size:14px;color:var(--ink2);line-height:1.75;padding-left:14px;border-left:3px solid var(--rule2);margin-bottom:${cnText?'10px':'0'}">${enText}</div>
+        ${cnText?`<div style="font-family:var(--cn);font-size:13px;color:var(--ink3);line-height:1.8;padding:10px 14px;border-left:3px solid var(--rule2);background:var(--bg-light)">${cnText}</div>`:''}
+      </div>
+      <div class="op-meta">
+        <span class="op-source-tag">${o.source}</span>
+        <span>${o.date||''}</span>
+        ${o.url?`<a href="${o.url}" target="_blank" style="font-family:var(--mono);font-size:9px;color:var(--accent2);text-decoration:underline">原文 →</a>`:''}
+      </div>
+    </div>`;
+  }).join('');
+  const seen2=new Set();
+  const sideList=OPINIONS.filter(o=>{const k=o.id||o.name;if(seen2.has(k))return false;seen2.add(k);return true;}).filter(o=>!cat||cat==='all'?true:o.cat!==cat).slice(0,6);
+  document.getElementById('op-sidebar').innerHTML=sideList.map(o=>`
+    <div class="op-sidebar-person">
+      <div class="op-sp-name">${o.nameZh||''} <span style="font-weight:400;color:var(--ink3);font-size:11px">${o.name}</span></div>
+      <div class="op-sp-snippet">${cleanQuote(o.quote).slice(0,60)}…</div>
+    </div>`).join('');
+}
+function filterOpinions(cat,el){
+  document.querySelectorAll('#op-toolbar .tb-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');renderOpinions(cat);
+}
+
+// ══════════════════════════════════════
+// GLOBAL ASSETS
+// ══════════════════════════════════════
+async function loadAssets(){
+  const wrap=document.getElementById('assets-wrap');
+  wrap.innerHTML='<p style="font-family:var(--mono);font-size:11px;color:var(--ink4);padding:40px 0;text-align:center">Loading market data…</p>';
+  let ASSET_DATA=null;
+  try{
+    ASSET_DATA=await fetchData('assets.json');
+  }catch(e){console.warn('assets.json load failed:',e);}
+  const tsEl=document.getElementById('assets-updated');
+  if(ASSET_DATA&&ASSET_DATA.updated_display){tsEl.textContent='Updated '+ASSET_DATA.updated_display;}else{tsEl.textContent='';}
+  if(!ASSET_DATA){wrap.innerHTML='<p style="font-family:var(--mono);font-size:11px;color:var(--ink4);padding:40px 0;text-align:center">Market data unavailable.</p>';return;}
+  function parseChg(s){return parseFloat((s||'').replace('%','').replace('+','').replace('bp',''))||0;}
+  wrap.innerHTML=ASSET_DATA.sections.map(sec=>{
+    const sorted=[...sec.items].sort((a,b)=>parseChg(b.chg)-parseChg(a.chg));
+    return `<div class="asset-section-block">
+      <div class="asset-section-title">${sec.title}</div>
+      <table class="asset-table">
+        <thead><tr>
+          <th>Name</th><th style="text-align:right">Price</th><th style="text-align:right">24H</th>
+          <th style="text-align:right">6M</th><th style="text-align:right">1Y</th><th style="text-align:right">3Y</th>
+          <th style="text-align:right">52W Range</th><th style="width:80px;text-align:right">Trend</th>
+        </tr></thead>
+        <tbody>${sorted.map(item=>`
+        <tr onclick="selectAssetRow(this,'${item.key}')">
+          <td><div class="td-name">${item.name}</div><div class="td-sub">${item.sub}</div></td>
+          <td class="td-price" style="text-align:right">${item.price}</td>
+          <td style="text-align:right"><span class="td-chg ${item.up?'up':'dn'}">${item.chg}</span></td>
+          <td style="text-align:right"><span class="td-chg ${item.up_6m?'up':'dn'}">${item.chg_6m||'N/A'}</span></td>
+          <td style="text-align:right"><span class="td-chg ${item.up_1y?'up':'dn'}">${item.chg_1y||'N/A'}</span></td>
+          <td style="text-align:right"><span class="td-chg ${item.up_3y?'up':'dn'}">${item.chg_3y||'N/A'}</span></td>
+          <td class="td-range" style="text-align:right">${item.range52}</td>
+          <td class="sparkline-cell"><canvas id="sp-${item.key}" width="80" height="32"></canvas></td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>`;
+  }).join('');
+  requestAnimationFrame(()=>{ASSET_DATA.sections.forEach(sec=>sec.items.forEach(item=>drawSparkline('sp-'+item.key,item.key)));});
+}
+function selectAssetRow(tr,key){
+  document.querySelectorAll('.asset-table tbody tr').forEach(r=>r.classList.remove('selected'));
+  tr.classList.add('selected');
+  if(SERIES[key])drawMainChart(key);
+  document.getElementById('chart-panel').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ══════════════════════════════════════
+// CLAUDE API
+// ══════════════════════════════════════
+async function callClaude(prompt){
+  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,messages:[{role:'user',content:prompt}]})});
+  const d=await r.json();return d.content?.[0]?.text||'翻译暂时不可用';
+}
+
+// ══════════════════════════════════════
+// NAV
+// ══════════════════════════════════════
+function showPanel(id,el){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');el.classList.add('active');
+  if(id==='assets'&&!document.getElementById('assets-wrap').children.length)loadAssets();
+  if(id==='opinions'&&!document.getElementById('op-main').children.length)renderOpinions('all');
+  if(id==='reading'&&!document.getElementById('reading-main').children.length)renderReading('all');
+}
+function filterNews(cat,el){
+  document.querySelectorAll('#news-toolbar .tb-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  renderNews(cat);
+}
+function closeModal(){document.getElementById('modal').classList.remove('open');}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeVdModal();}});
+
+// ══════════════════════════════════════
+// TICKER
+// ══════════════════════════════════════
+const TICKERS=[{l:'EUR/USD',v:'1.0891',c:'+0.12%',up:true},{l:'USD/JPY',v:'148.24',c:'-0.08%',up:false},{l:'S&P 500',v:'5,642',c:'+0.31%',up:true},{l:'NASDAQ',v:'17,845',c:'+0.54%',up:true},{l:'Gold',v:'$2,318',c:'-0.22%',up:false},{l:'BTC',v:'$68,420',c:'+1.84%',up:true},{l:'CSI 1000',v:'5,228',c:'+0.67%',up:true},{l:'WTI',v:'$83.12',c:'-0.41%',up:false},{l:'DXY',v:'104.2',c:'+0.19%',up:true},{l:'10Y UST',v:'4.31%',c:'+3bp',up:false}];
+const th=TICKERS.map(t=>`<div class="mitem"><span>${t.l}</span><span class="mval">${t.v}</span><span class="${t.up?'up':'dn'}">${t.c}</span></div>`).join('');
+document.getElementById('mtrack').innerHTML=th+th;
+
+// ══════════════════════════════════════
+// INIT
+// ══════════════════════════════════════
+document.getElementById('mdate').textContent=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}).toUpperCase();
+
+// ── Data source: prefer the live JSON published by the upstream All-In-One
+//    site, fall back to the bundled snapshot under ./data/ when it is
+//    unreachable. Returns null if neither is available, so callers can use
+//    their built-in fallback data.
+const REMOTE_DATA='https://allinone418.github.io/data/';
+async function fetchData(name){
+  try{const r=await fetch(REMOTE_DATA+name+'?t='+Date.now());if(r.ok)return await r.json();}catch(e){}
+  try{const r=await fetch('./data/'+name);if(r.ok)return await r.json();}catch(e){}
+  return null;
+}
+
+async function loadData(){
+  const [newsData,opData,rdData]=await Promise.all([
+    fetchData('news.json'),fetchData('opinions.json'),fetchData('reading.json'),
+  ]);
+  if(newsData&&newsData.length){NEWS.length=0;newsData.forEach(item=>NEWS.push(item));}
+  if(opData&&opData.length){OPINIONS.length=0;opData.forEach(item=>OPINIONS.push(item));}
+  if(rdData&&rdData.length){ARTICLES.length=0;rdData.forEach(item=>ARTICLES.push(item));}
+  renderNews('all');
+  renderReading('all');
+  loadVideos();
+}
+
+// ══════════════════════════════════════
+// DAILY QUOTE
+// ══════════════════════════════════════
+async function loadDailyQuote(){
+  try{
+    const res = await fetch('https://zenquotes.io/api/random');
+    const data = await res.json();
+    const q = data[0];
+    const en = q.q;
+    const author = q.a;
+    document.getElementById('dq-en').textContent = '"' + en + '"';
+    document.getElementById('dq-author').textContent = '— ' + author;
+    const cn = await callClaude(`将以下英文名言翻译成中文，只输出译文，不要任何解释：\n"${en}"`);
+    document.getElementById('dq-cn').textContent = cn;
+  }catch(e){
+    console.warn('quote load failed:',e);
+  }
+}
+
+loadData();
+loadDailyQuote();
+</script>
+</body>
+</html>

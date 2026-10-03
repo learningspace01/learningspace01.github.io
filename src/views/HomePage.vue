@@ -2,7 +2,7 @@
 import { useRouter } from 'vue-router'
 import { useSettingsStore } from '@/stores/settingsStore'
 import GlassCard from '@/components/GlassCard.vue'
-import { BookOpen, Clock, FileText, Calculator, GraduationCap, Search, Sun, Moon } from 'lucide-vue-next'
+import { BookOpen, Clock, FileText, Calculator, GraduationCap, Search, Sun, Moon, Newspaper } from 'lucide-vue-next'
 
 const router = useRouter()
 const settingsStore = useSettingsStore()
@@ -16,6 +16,7 @@ const tools = [
     color: '#4F6EF7',
     active: true,
     path: '/vocab',
+    external: false,
   },
   {
     id: 'classflow',
@@ -25,6 +26,17 @@ const tools = [
     color: '#10B981',
     active: true,
     path: '/classflow',
+    external: false,
+  },
+  {
+    id: 'allinone',
+    name: 'All-In-One',
+    desc: '财经·科技·市场·深读 — 聚合资讯与全球行情',
+    icon: Newspaper,
+    color: '#C41230',
+    active: true,
+    path: '/allinone/index.html',
+    external: true,
   },
   {
     id: 'todo',
@@ -34,6 +46,7 @@ const tools = [
     color: '#9CA3AF',
     active: false,
     path: '',
+    external: false,
   },
   {
     id: 'note',
@@ -43,6 +56,7 @@ const tools = [
     color: '#9CA3AF',
     active: false,
     path: '',
+    external: false,
   },
   {
     id: 'math',
@@ -52,12 +66,18 @@ const tools = [
     color: '#9CA3AF',
     active: false,
     path: '',
+    external: false,
   },
 ]
 
 function goToTool(tool: typeof tools[0]) {
   if (tool.active && tool.path) {
-    router.push(tool.path)
+    if (tool.external) {
+      // Standalone static page (not a vue-router route): full navigation.
+      window.location.href = tool.path
+    } else {
+      router.push(tool.path)
+    }
   }
 }
 </script>
